@@ -5,6 +5,8 @@ import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { DEFAULT_BGM_SOURCE, useBgm } from "../components/BgmProvider";
+import { playAudioEffect, playCrocodileBiteImpactSound } from "../utils/soundEffects";
 
 const STAKE_LABELS: Record<string, string> = {
   coffee: "买咖啡",
@@ -26,6 +28,7 @@ export default function CrocodileGame() {
   const [showResult, setShowResult] = useState(false);
   const [isBiting, setIsBiting] = useState(false);
   const [currentStake, setCurrentStake] = useState("请吃饭");
+  const { setTrack, enabled: audioEnabled } = useBgm();
 
   const getCurrentStake = () => {
     const selectedStakeIds = JSON.parse(localStorage.getItem("selectedStakes") || "[]");
@@ -48,6 +51,13 @@ export default function CrocodileGame() {
     setCurrentStake(getCurrentStake());
   }, []);
 
+  useEffect(() => {
+    setTrack("/sounds/minecraft.mp3");
+    return () => {
+      setTrack(DEFAULT_BGM_SOURCE);
+    };
+  }, [setTrack]);
+
   const startGame = () => {
     setDangerTooth(Math.floor(Math.random() * 12));
     setTeeth(Array(12).fill(false));
@@ -61,6 +71,18 @@ export default function CrocodileGame() {
   const pressTooth = (index: number) => {
     if (teeth[index] || gameOver) return;
 
+    if (index === dangerTooth) {
+      playAudioEffect("/sounds/villagerdead.mp3", audioEnabled, {
+        category: "voice",
+        multiplier: 1.02,
+      });
+    } else {
+      const effectPool = ["/sounds/villager1.mp3", "/sounds/villager2.mp3", "/sounds/villager3.mp3"];
+      playAudioEffect(effectPool[Math.floor(Math.random() * effectPool.length)], audioEnabled, {
+        category: "voice",
+      });
+    }
+
     const newTeeth = [...teeth];
     newTeeth[index] = true;
     setTeeth(newTeeth);
@@ -69,6 +91,7 @@ export default function CrocodileGame() {
       const selectedStake = getCurrentStake();
       setCurrentStake(selectedStake);
       setIsBiting(true);
+      playCrocodileBiteImpactSound(audioEnabled);
       setTimeout(() => {
         setGameOver(true);
         
@@ -101,7 +124,7 @@ export default function CrocodileGame() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
+    <div className="min-h-screen app-screen-gradient">
       <Header title="鳄鱼拔牙" showBack showHistory />
 
       <div className="px-6 py-8">

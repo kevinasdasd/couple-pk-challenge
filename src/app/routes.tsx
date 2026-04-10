@@ -4,6 +4,7 @@ import GameSelect from "./pages/GameSelect";
 import DiceGame from "./pages/DiceGame";
 import CrocodileGame from "./pages/CrocodileGame";
 import StakeSettings from "./pages/StakeSettings";
+import GobangGame from "./pages/GobangGame";
 import History from "./pages/History";
 
 export const router = createBrowserRouter([
@@ -30,5 +31,9 @@ export const router = createBrowserRouter([
   {
     path: "/history",
     Component: History,
+  },
+    {
+    path: "/gobang",
+    Component: GobangGame,
   },
 ]);

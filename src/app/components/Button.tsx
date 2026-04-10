@@ -1,5 +1,7 @@
 import { motion } from "motion/react";
 import { ReactNode } from "react";
+import { useBgm } from "./BgmProvider";
+import { playUiSound } from "../utils/soundEffects";
 
 interface ButtonProps {
   children: ReactNode;
@@ -8,7 +10,14 @@ interface ButtonProps {
   size?: "sm" | "md" | "lg";
   className?: string;
   disabled?: boolean;
+  sound?: "confirm" | "back" | "navigate" | "none";
 }
+
+const BUTTON_VARIANT_STYLES = {
+  primary: "bg-[#FFEA6F] text-[#1F2430] border border-[#F5DA57]",
+  secondary: "bg-[#FFC9EF] text-[#1F2430] border border-[#F5B6E1]",
+  danger: "bg-[#FFD4D4] text-[#8F2F2F] border border-[#F3B4B4]",
+} as const;
 
 export function Button({
   children,
@@ -17,14 +26,10 @@ export function Button({
   size = "md",
   className = "",
   disabled = false,
+  sound = "confirm",
 }: ButtonProps) {
+  const { enabled } = useBgm();
   const baseStyles = "rounded-full font-medium transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
-  
-  const variantStyles = {
-    primary: "bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-200",
-    secondary: "bg-gradient-to-r from-blue-400 to-blue-500 text-white shadow-lg shadow-blue-200",
-    danger: "bg-gradient-to-r from-red-400 to-red-500 text-white shadow-lg shadow-red-200",
-  };
   
   const sizeStyles = {
     sm: "px-4 py-2 text-sm",
@@ -35,9 +40,14 @@ export function Button({
   return (
     <motion.button
       whileTap={{ scale: disabled ? 1 : 0.95 }}
-      onClick={onClick}
+      onClick={() => {
+        if (!disabled && sound !== "none") {
+          playUiSound(sound, enabled);
+        }
+        onClick?.();
+      }}
       disabled={disabled}
-      className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      className={`${baseStyles} ${BUTTON_VARIANT_STYLES[variant]} ${sizeStyles[size]} ${className}`}
     >
       {children}
     </motion.button>

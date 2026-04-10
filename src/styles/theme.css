@@ -124,8 +124,49 @@
     @apply border-border outline-ring/50;
   }
 
+  .shadow,
+  .shadow-xs,
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl,
+  .shadow-inner,
+  [class^="shadow-"],
+  [class*=" shadow-"],
+  [style*="box-shadow"],
+  [class^="drop-shadow-"],
+  [class*=" drop-shadow-"],
+  [style*="drop-shadow"] {
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  body {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 234, 111, 0.28) 0%,
+      rgba(255, 234, 111, 0.14) 20%,
+      rgba(255, 234, 111, 0.07) 42%,
+      rgba(255, 234, 111, 0.03) 68%,
+      rgba(255, 234, 111, 0) 100%
+    );
+    background-attachment: fixed;
+  }
+
+  .app-screen-gradient {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 234, 111, 0.28) 0%,
+      rgba(255, 234, 111, 0.14) 20%,
+      rgba(255, 234, 111, 0.07) 42%,
+      rgba(255, 234, 111, 0.03) 68%,
+      rgba(255, 234, 111, 0) 100%
+    );
   }
 
   /**

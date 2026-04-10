@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Trophy, Flame, Calendar, Trash2 } from "lucide-react";
 import { Header } from "../components/Header";
+import { Button } from "../components/Button";
+import { useBgm } from "../components/BgmProvider";
+import { playUiSound } from "../utils/soundEffects";
 
 interface GameRecord {
   date: string;
@@ -13,6 +16,8 @@ interface GameRecord {
 export default function History() {
   const [history, setHistory] = useState<GameRecord[]>([]);
   const [stats, setStats] = useState({ player1: 0, player2: 0 });
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const { enabled: audioEnabled } = useBgm();
 
   useEffect(() => {
     const saved = localStorage.getItem("gameHistory");
@@ -29,10 +34,9 @@ export default function History() {
   }, []);
 
   const clearHistory = () => {
-    if (confirm("确定要清除所有历史记录吗？")) {
-      localStorage.removeItem("gameHistory");
-      setHistory([]);
-    }
+    localStorage.removeItem("gameHistory");
+    setHistory([]);
+    setShowClearConfirm(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -58,7 +62,7 @@ export default function History() {
     .slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 pb-8">
+    <div className="min-h-screen app-screen-gradient pb-8">
       <Header title="战绩历史" showBack />
 
       <div className="px-6 py-8">
@@ -141,7 +145,10 @@ export default function History() {
             <h3 className="font-bold text-gray-800">历史记录</h3>
             {history.length > 0 && (
               <button
-                onClick={clearHistory}
+                onClick={() => {
+                  playUiSound("confirm", audioEnabled);
+                  setShowClearConfirm(true);
+                }}
                 className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
               >
                 <Trash2 className="w-4 h-4" />
@@ -186,6 +193,47 @@ export default function History() {
           )}
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showClearConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-40"
+              onClick={() => {
+                playUiSound("back", audioEnabled);
+                setShowClearConfirm(false);
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              className="fixed inset-x-6 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto"
+            >
+              <div className="rounded-[28px] bg-white border border-[#FFEA6F] p-6 text-center">
+                <p className="text-2xl font-bold text-[#1F2430] mb-3">确认清空吗？</p>
+                <p className="text-sm text-[#6B7280] mb-6">历史记录会一次性清空，之后就看不到啦。</p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    sound="back"
+                    onClick={() => setShowClearConfirm(false)}
+                    className="flex-1"
+                  >
+                    取消
+                  </Button>
+                  <Button variant="primary" sound="confirm" onClick={clearHistory} className="flex-1">
+                    确认清空
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

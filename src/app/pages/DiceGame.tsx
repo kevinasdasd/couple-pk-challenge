@@ -1,15 +1,33 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Dices } from "lucide-react";
 import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { useBgm } from "../components/BgmProvider";
+import {
+  playDiceRevealSound,
+  playInvalidActionSound,
+  playTieRoundSound,
+  startDiceRollingLoop,
+} from "../utils/soundEffects";
 
 interface Player {
   name: string;
   guess: string;
 }
+
+const PALETTE = {
+  yellow: "#FFEA6F",
+  paleYellow: "#FFFDF0",
+  pink: "#FFC9EF",
+  palePink: "#FFF9FD",
+  blue: "#ABD7FA",
+  paleBlue: "#F6FBFE",
+  ink: "#1F2430",
+  subInk: "#6B7280",
+};
 
 const STAKE_LABELS: Record<string, string> = {
   coffee: "买咖啡",
@@ -24,12 +42,38 @@ const STAKE_LABELS: Record<string, string> = {
 export default function DiceGame() {
   const [player1, setPlayer1] = useState<Player>({ name: "Kevin", guess: "" });
   const [player2, setPlayer2] = useState<Player>({ name: "Demi", guess: "" });
+  const [activePlayer, setActivePlayer] = useState<"Kevin" | "Demi" | null>(null);
   const [gameState, setGameState] = useState<"setup" | "rolling" | "result">("setup");
   const [diceResults, setDiceResults] = useState<number[]>([1, 1, 1]);
   const [showResult, setShowResult] = useState(false);
   const [winner, setWinner] = useState("");
   const [loser, setLoser] = useState("");
   const [currentStake, setCurrentStake] = useState("请吃饭");
+  const { enabled: audioEnabled } = useBgm();
+  const diceIntervalRef = useRef<number | null>(null);
+  const diceStopTimerRef = useRef<number | null>(null);
+  const stopRollingAudioRef = useRef<(() => void) | null>(null);
+
+  const stopRollingEffects = () => {
+    if (diceIntervalRef.current !== null) {
+      window.clearInterval(diceIntervalRef.current);
+      diceIntervalRef.current = null;
+    }
+    if (diceStopTimerRef.current !== null) {
+      window.clearTimeout(diceStopTimerRef.current);
+      diceStopTimerRef.current = null;
+    }
+    if (stopRollingAudioRef.current) {
+      stopRollingAudioRef.current();
+      stopRollingAudioRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopRollingEffects();
+    };
+  }, []);
 
   const getCurrentStake = () => {
     const selectedStakeIds = JSON.parse(localStorage.getItem("selectedStakes") || "[]");
@@ -51,21 +95,25 @@ export default function DiceGame() {
     const guess2 = parseInt(player2.guess);
     
     if (!player1.guess || !player2.guess || isNaN(guess1) || isNaN(guess2)) {
+      playInvalidActionSound(audioEnabled);
       alert("请输入猜测的点数");
       return;
     }
 
     if (guess1 < 3 || guess1 > 18 || guess2 < 3 || guess2 > 18) {
+      playInvalidActionSound(audioEnabled);
       alert("点数范围必须在3-18之间");
       return;
     }
 
+    stopRollingEffects();
     setGameState("rolling");
     const selectedStake = getCurrentStake();
     setCurrentStake(selectedStake);
+    stopRollingAudioRef.current = startDiceRollingLoop(audioEnabled);
     
     // Animate dice rolling
-    const interval = setInterval(() => {
+    diceIntervalRef.current = window.setInterval(() => {
       setDiceResults([
         Math.floor(Math.random() * 6) + 1,
         Math.floor(Math.random() * 6) + 1,
@@ -74,14 +122,15 @@ export default function DiceGame() {
     }, 100);
 
     // Stop after 2 seconds and show result
-    setTimeout(() => {
-      clearInterval(interval);
+    diceStopTimerRef.current = window.setTimeout(() => {
+      stopRollingEffects();
       const finalDice = [
         Math.floor(Math.random() * 6) + 1,
         Math.floor(Math.random() * 6) + 1,
         Math.floor(Math.random() * 6) + 1,
       ];
       setDiceResults(finalDice);
+      playDiceRevealSound(audioEnabled);
       
       const total = finalDice.reduce((a, b) => a + b, 0);
       const diff1 = Math.abs(parseInt(player1.guess) - total);
@@ -99,6 +148,7 @@ export default function DiceGame() {
       } else {
         roundWinner = "平局";
         roundLoser = "重新来过";
+        playTieRoundSound(audioEnabled);
       }
 
       setWinner(roundWinner);
@@ -121,8 +171,10 @@ export default function DiceGame() {
   };
 
   const resetGame = () => {
+    stopRollingEffects();
     setPlayer1({ name: "Kevin", guess: "" });
     setPlayer2({ name: "Demi", guess: "" });
+    setActivePlayer(null);
     setGameState("setup");
     setDiceResults([1, 1, 1]);
     setShowResult(false);
@@ -140,7 +192,10 @@ export default function DiceGame() {
     };
 
     return (
-      <div className="w-20 h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center relative">
+      <div
+        className="w-20 h-20 rounded-2xl flex items-center justify-center relative border border-[#F1E8D4]"
+        style={{ backgroundColor: "#FFFFFF" }}
+      >
         <div className="grid grid-cols-3 gap-1 p-2">
           {Array.from({ length: 9 }).map((_, i) => {
             const row = Math.floor(i / 3);
@@ -150,7 +205,7 @@ export default function DiceGame() {
               <div
                 key={i}
                 className={`w-3 h-3 rounded-full ${
-                  hasDot ? "bg-orange-500" : "bg-transparent"
+                  hasDot ? "bg-[#1F2430]" : "bg-transparent"
                 }`}
               />
             );
@@ -161,7 +216,7 @@ export default function DiceGame() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
+    <div className="min-h-screen app-screen-gradient">
       <Header title="骰子猜点" showBack showHistory />
 
       <div className="px-6 py-8">
@@ -172,7 +227,7 @@ export default function DiceGame() {
             className="space-y-6"
           >
             {/* Game visual */}
-            <div className="relative h-48 rounded-3xl overflow-hidden mb-6">
+            <div className="relative h-48 rounded-3xl overflow-hidden mb-6 border border-white/80">
               <ImageWithFallback
                 src="/images/dice-fight.png"
                 alt="骰子游戏"
@@ -184,47 +239,95 @@ export default function DiceGame() {
             </div>
 
             {/* Player 1 */}
-            <div className="bg-white rounded-2xl p-5 shadow-lg">
+            <div
+              className="rounded-[28px] p-5 border transition-colors"
+              style={{
+                backgroundColor: PALETTE.paleBlue,
+                borderColor: activePlayer === "Kevin" ? PALETTE.blue : "#FFFFFF",
+              }}
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-2xl"
+                  style={{ backgroundColor: PALETTE.blue }}
+                >
                   K
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-gray-800">{player1.name}</p>
-                  <p className="text-sm text-gray-500">输入猜测点数 (3-18)</p>
+                  <p className="font-bold text-[32px] leading-none" style={{ color: PALETTE.ink }}>
+                    凯文
+                  </p>
+                  <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
+                    输入猜测分数 (3-18)
+                  </p>
                 </div>
               </div>
-              <input
-                type="number"
-                placeholder="输入数字"
-                min="3"
-                max="18"
-                value={player1.guess}
-                onChange={(e) => setPlayer1({ ...player1, guess: e.target.value })}
-                className="w-full bg-gray-50 rounded-xl px-4 py-3 text-center text-2xl font-bold outline-none focus:ring-2 focus:ring-orange-300"
-              />
+              <div
+                className="rounded-[24px] border-2 px-4 py-3 transition-colors"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderColor: activePlayer === "Kevin" ? PALETTE.blue : "#E9EEF5",
+                }}
+              >
+                <input
+                  type="number"
+                  placeholder="输入数字"
+                  min="3"
+                  max="18"
+                  value={player1.guess}
+                  onFocus={() => setActivePlayer("Kevin")}
+                  onBlur={() => setActivePlayer((current) => (current === "Kevin" ? null : current))}
+                  onChange={(e) => setPlayer1({ ...player1, guess: e.target.value })}
+                  className="w-full bg-transparent text-center text-2xl font-bold outline-none"
+                  style={{ color: PALETTE.ink }}
+                />
+              </div>
             </div>
 
             {/* Player 2 */}
-            <div className="bg-white rounded-2xl p-5 shadow-lg">
+            <div
+              className="rounded-[28px] p-5 border transition-colors"
+              style={{
+                backgroundColor: PALETTE.palePink,
+                borderColor: activePlayer === "Demi" ? PALETTE.pink : "#FFFFFF",
+              }}
+            >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-2xl"
+                  style={{ backgroundColor: PALETTE.pink }}
+                >
                   D
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-gray-800">{player2.name}</p>
-                  <p className="text-sm text-gray-500">输入猜测点数 (3-18)</p>
+                  <p className="font-bold text-[32px] leading-none" style={{ color: PALETTE.ink }}>
+                    黛米
+                  </p>
+                  <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
+                    输入猜测分数 (3-18)
+                  </p>
                 </div>
               </div>
-              <input
-                type="number"
-                placeholder="输入数字"
-                min="3"
-                max="18"
-                value={player2.guess}
-                onChange={(e) => setPlayer2({ ...player2, guess: e.target.value })}
-                className="w-full bg-gray-50 rounded-xl px-4 py-3 text-center text-2xl font-bold outline-none focus:ring-2 focus:ring-blue-300"
-              />
+              <div
+                className="rounded-[24px] border-2 px-4 py-3 transition-colors"
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderColor: activePlayer === "Demi" ? PALETTE.pink : "#F5E8F1",
+                }}
+              >
+                <input
+                  type="number"
+                  placeholder="输入数字"
+                  min="3"
+                  max="18"
+                  value={player2.guess}
+                  onFocus={() => setActivePlayer("Demi")}
+                  onBlur={() => setActivePlayer((current) => (current === "Demi" ? null : current))}
+                  onChange={(e) => setPlayer2({ ...player2, guess: e.target.value })}
+                  className="w-full bg-transparent text-center text-2xl font-bold outline-none"
+                  style={{ color: PALETTE.ink }}
+                />
+              </div>
             </div>
 
             <Button size="lg" onClick={rollDice} className="w-full">
@@ -232,7 +335,7 @@ export default function DiceGame() {
               开启挑战
             </Button>
 
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm" style={{ color: PALETTE.subInk }}>
               点数范围：3-18 · 猜得最接近的人获胜
             </p>
           </motion.div>
@@ -265,25 +368,34 @@ export default function DiceGame() {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 shadow-lg">
-                    <p className="text-gray-600 mb-2">总点数</p>
-                    <p className="text-5xl font-bold text-orange-600">
+                  <div
+                    className="rounded-2xl p-6 border"
+                    style={{ backgroundColor: PALETTE.paleYellow, borderColor: "#F5DA57" }}
+                  >
+                    <p className="mb-2" style={{ color: PALETTE.subInk }}>总点数</p>
+                    <p className="text-5xl font-bold" style={{ color: PALETTE.ink }}>
                       {diceResults.reduce((a, b) => a + b, 0)}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white rounded-2xl p-4 shadow-md">
-                      <p className="text-sm text-gray-500 mb-1">{player1.name}</p>
-                      <p className="text-2xl font-bold text-gray-800">猜{player1.guess}</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                    <div
+                      className="rounded-2xl p-4 border"
+                      style={{ backgroundColor: PALETTE.paleBlue, borderColor: PALETTE.blue }}
+                    >
+                      <p className="text-sm mb-1" style={{ color: PALETTE.subInk }}>{player1.name}</p>
+                      <p className="text-2xl font-bold" style={{ color: PALETTE.ink }}>猜{player1.guess}</p>
+                      <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
                         差距 {Math.abs(parseInt(player1.guess) - diceResults.reduce((a, b) => a + b, 0))}
                       </p>
                     </div>
-                    <div className="bg-white rounded-2xl p-4 shadow-md">
-                      <p className="text-sm text-gray-500 mb-1">{player2.name}</p>
-                      <p className="text-2xl font-bold text-gray-800">猜{player2.guess}</p>
-                      <p className="text-sm text-gray-500 mt-1">
+                    <div
+                      className="rounded-2xl p-4 border"
+                      style={{ backgroundColor: PALETTE.palePink, borderColor: PALETTE.pink }}
+                    >
+                      <p className="text-sm mb-1" style={{ color: PALETTE.subInk }}>{player2.name}</p>
+                      <p className="text-2xl font-bold" style={{ color: PALETTE.ink }}>猜{player2.guess}</p>
+                      <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
                         差距 {Math.abs(parseInt(player2.guess) - diceResults.reduce((a, b) => a + b, 0))}
                       </p>
                     </div>

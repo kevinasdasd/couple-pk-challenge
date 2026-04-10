@@ -1,5 +1,7 @@
 import { motion } from "motion/react";
 import { ReactNode } from "react";
+import { useBgm } from "./BgmProvider";
+import { playUiSound } from "../utils/soundEffects";
 
 interface GameCardProps {
   title: string;
@@ -10,6 +12,7 @@ interface GameCardProps {
 }
 
 export function GameCard({ title, description, icon, color, onClick }: GameCardProps) {
+  const { enabled } = useBgm();
   const colorStyles = {
     orange: "from-orange-50 to-orange-100 border-orange-200",
     blue: "from-blue-50 to-blue-100 border-blue-200",
@@ -23,7 +26,10 @@ export function GameCard({ title, description, icon, color, onClick }: GameCardP
   return (
     <motion.div
       whileTap={{ scale: 0.98 }}
-      onClick={onClick}
+      onClick={() => {
+        playUiSound("navigate", enabled);
+        onClick?.();
+      }}
       className={`bg-gradient-to-br ${colorStyles[color]} border-2 rounded-3xl p-6 cursor-pointer shadow-lg hover:shadow-xl transition-shadow`}
     >
       <div className="flex items-start gap-4">

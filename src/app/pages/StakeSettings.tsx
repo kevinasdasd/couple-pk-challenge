@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { Check, Plus, Coffee, Hand, Utensils, Crown, ShoppingCart, PackageCheck, UtensilsCrossed } from "lucide-react";
 import { Header } from "../components/Header";
 import { Button } from "../components/Button";
+import { useBgm } from "../components/BgmProvider";
+import { playUiSound } from "../utils/soundEffects";
 
 const DEFAULT_STAKES = [
   { id: "coffee", label: "买咖啡", icon: Coffee },
@@ -17,6 +19,7 @@ export default function StakeSettings() {
   const [selectedStakes, setSelectedStakes] = useState<string[]>([]);
   const [customStakes, setCustomStakes] = useState<string[]>([]);
   const [newStake, setNewStake] = useState("");
+  const { enabled: audioEnabled } = useBgm();
 
   useEffect(() => {
     const saved = localStorage.getItem("selectedStakes");
@@ -33,6 +36,7 @@ export default function StakeSettings() {
   }, []);
 
   const toggleStake = (id: string) => {
+    playUiSound(selectedStakes.includes(id) ? "back" : "confirm", audioEnabled);
     const newSelected = selectedStakes.includes(id)
       ? selectedStakes.filter((s) => s !== id)
       : [...selectedStakes, id];
@@ -42,6 +46,7 @@ export default function StakeSettings() {
 
   const addCustomStake = () => {
     if (!newStake.trim()) return;
+    playUiSound("confirm", audioEnabled);
     const newCustom = [...customStakes, newStake.trim()];
     setCustomStakes(newCustom);
     localStorage.setItem("customStakes", JSON.stringify(newCustom));
@@ -49,13 +54,14 @@ export default function StakeSettings() {
   };
 
   const removeCustomStake = (stake: string) => {
+    playUiSound("back", audioEnabled);
     const newCustom = customStakes.filter((s) => s !== stake);
     setCustomStakes(newCustom);
     localStorage.setItem("customStakes", JSON.stringify(newCustom));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 pb-8">
+    <div className="min-h-screen app-screen-gradient pb-8">
       <Header title="赌注设置" showBack showHistory />
 
       <div className="px-6 py-8">
@@ -124,7 +130,11 @@ export default function StakeSettings() {
                 placeholder="输入自定义赌注..."
                 value={newStake}
                 onChange={(e) => setNewStake(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && addCustomStake()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    addCustomStake();
+                  }
+                }}
                 className="flex-1 bg-gray-50 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-300"
               />
               <button
