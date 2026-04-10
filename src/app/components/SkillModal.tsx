@@ -1,11 +1,13 @@
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Zap, RefreshCw, Shuffle } from "lucide-react";
+import { type PlayerId } from "../utils/playerSettings";
 
 interface SkillModalProps {
   isOpen: boolean;
   onClose: () => void;
   skillName: string;
   skillDescription: string;
+  playerId: PlayerId;
   playerName: string;
   isDestiny?: boolean;
 }
@@ -15,6 +17,7 @@ export function SkillModal({
   onClose,
   skillName,
   skillDescription,
+  playerId,
   playerName,
   isDestiny = false,
 }: SkillModalProps) {
@@ -58,19 +61,19 @@ export function SkillModal({
               className={`rounded-3xl p-8 border ${
                 isDestiny
                   ? ""
-                  : playerName === "Kevin"
+                  : playerId === "Kevin"
                   ? ""
                   : ""
               }`}
               style={{
                 backgroundColor: isDestiny
                   ? palette.paleYellow
-                  : playerName === "Kevin"
+                  : playerId === "Kevin"
                   ? palette.paleBlue
                   : palette.palePink,
                 borderColor: isDestiny
                   ? palette.yellow
-                  : playerName === "Kevin"
+                  : playerId === "Kevin"
                   ? palette.blue
                   : palette.pink,
               }}
@@ -84,7 +87,7 @@ export function SkillModal({
                   style={{
                     backgroundColor: isDestiny
                       ? palette.yellow
-                      : playerName === "Kevin"
+                      : playerId === "Kevin"
                       ? palette.blue
                       : palette.pink,
                     borderColor: "#FFFFFF",

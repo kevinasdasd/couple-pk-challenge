@@ -13,9 +13,42 @@ interface GameRecord {
   stake: string;
 }
 
+const HISTORY_PALETTE = {
+  yellow: {
+    card: "bg-[#FFFDF0] border-[#F3E7A5]",
+    badge: "bg-[#FFEA6F] border-[#F3D95C] text-[#1F2430]",
+    chip: "bg-[#FFF4B8] text-[#715A0E]",
+    accent: "text-[#B89511]",
+  },
+  pink: {
+    card: "bg-[#FFF9FD] border-[#F3D3E8]",
+    badge: "bg-[#FFC9EF] border-[#F2B8DF] text-[#1F2430]",
+    chip: "bg-[#FFE2F5] text-[#9A6287]",
+    accent: "text-[#BE7BA7]",
+  },
+  green: {
+    card: "bg-[#F9FEE5] border-[#DDECA8]",
+    badge: "bg-[#C9F100] border-[#B6DB00] text-[#1F2430]",
+    chip: "bg-[#EBF8B7] text-[#607B00]",
+    accent: "text-[#7FA100]",
+  },
+  blue: {
+    card: "bg-[#F6FBFE] border-[#D3E7F7]",
+    badge: "bg-[#ABD7FA] border-[#93C4EC] text-[#1F2430]",
+    chip: "bg-[#DCEFFE] text-[#5D88A9]",
+    accent: "text-[#6E99BC]",
+  },
+} as const;
+
+const getRecordPalette = (gameName: string) => {
+  if (gameName.includes("骰")) return HISTORY_PALETTE.pink;
+  if (gameName.includes("鳄")) return HISTORY_PALETTE.green;
+  if (gameName.includes("胜天") || gameName.includes("棋")) return HISTORY_PALETTE.blue;
+  return HISTORY_PALETTE.yellow;
+};
+
 export default function History() {
   const [history, setHistory] = useState<GameRecord[]>([]);
-  const [stats, setStats] = useState({ player1: 0, player2: 0 });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const { enabled: audioEnabled } = useBgm();
 
@@ -24,12 +57,6 @@ export default function History() {
     if (saved) {
       const data = JSON.parse(saved);
       setHistory(data);
-
-      // Calculate stats
-      const losers: { [key: string]: number } = {};
-      data.forEach((record: GameRecord) => {
-        losers[record.loser] = (losers[record.loser] || 0) + 1;
-      });
     }
   }, []);
 
@@ -61,40 +88,41 @@ export default function History() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
+  const currentMonthCount = history.filter((record) => {
+    const recordDate = new Date(record.date);
+    const now = new Date();
+    return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
+  }).length;
+
   return (
-    <div className="min-h-screen app-screen-gradient pb-8">
+    <div className="app-mobile-page app-screen-gradient">
       <Header title="战绩历史" showBack />
 
-      <div className="px-6 py-8">
+      <div className="app-page-content">
         {/* Stats cards */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 gap-4 mb-8"
+          className="grid grid-cols-2 gap-3 mb-5"
         >
-          <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Trophy className="w-5 h-5" />
-              <span className="text-sm opacity-90">总场次</span>
+          <div className="rounded-2xl border border-[#F3E7A5] bg-[#FFFDF0] p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#F3D95C] bg-[#FFEA6F] text-[#1F2430]">
+                <Trophy className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-sm font-medium text-[#6B7280]">总场次</span>
             </div>
-            <p className="text-3xl font-bold">{history.length}</p>
+            <p className="text-3xl font-bold text-[#1F2430]">{history.length}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Flame className="w-5 h-5" />
-              <span className="text-sm opacity-90">本月</span>
+          <div className="rounded-2xl border border-[#D3E7F7] bg-[#F6FBFE] p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#93C4EC] bg-[#ABD7FA] text-[#1F2430]">
+                <Flame className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-sm font-medium text-[#6B7280]">本月</span>
             </div>
-            <p className="text-3xl font-bold">
-              {history.filter((r) => {
-                const recordDate = new Date(r.date);
-                const now = new Date();
-                return (
-                  recordDate.getMonth() === now.getMonth() &&
-                  recordDate.getFullYear() === now.getFullYear()
-                );
-              }).length}
-            </p>
+            <p className="text-3xl font-bold text-[#1F2430]">{currentMonthCount}</p>
           </div>
         </motion.div>
 
@@ -104,22 +132,28 @@ export default function History() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-8"
+            className="mb-5"
           >
-            <h3 className="font-bold text-gray-800 mb-4">输得最多的人 😅</h3>
+            <h3 className="mb-3 font-bold text-gray-800">输得最多的人</h3>
             <div className="space-y-3">
               {topLosers.map(([name, count], index) => (
                 <div
                   key={name}
-                  className="bg-white rounded-2xl p-4 shadow-md flex items-center gap-4"
+                  className={`flex items-center gap-4 rounded-2xl border p-4 ${
+                    index === 0
+                      ? HISTORY_PALETTE.yellow.card
+                      : index === 1
+                      ? HISTORY_PALETTE.pink.card
+                      : HISTORY_PALETTE.green.card
+                  }`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border font-bold ${
                       index === 0
-                        ? "bg-gradient-to-br from-yellow-400 to-orange-500"
+                        ? HISTORY_PALETTE.yellow.badge
                         : index === 1
-                        ? "bg-gradient-to-br from-gray-300 to-gray-400"
-                        : "bg-gradient-to-br from-orange-300 to-orange-400"
+                        ? HISTORY_PALETTE.pink.badge
+                        : HISTORY_PALETTE.green.badge
                     }`}
                   >
                     {index + 1}
@@ -128,7 +162,7 @@ export default function History() {
                     <p className="font-bold text-gray-800">{name}</p>
                     <p className="text-sm text-gray-500">输了 {count} 次</p>
                   </div>
-                  {index === 0 && <span className="text-2xl">👑</span>}
+                  {index === 0 && <span className={`text-xl ${HISTORY_PALETTE.yellow.accent}`}>👑</span>}
                 </div>
               ))}
             </div>
@@ -149,7 +183,7 @@ export default function History() {
                   playUiSound("confirm", audioEnabled);
                   setShowClearConfirm(true);
                 }}
-                className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
+                className="flex items-center gap-1 rounded-full border border-[#F2B8DF] bg-[#FFF9FD] px-3 py-1.5 text-sm font-medium text-[#B66FA0]"
               >
                 <Trash2 className="w-4 h-4" />
                 清空
@@ -158,10 +192,12 @@ export default function History() {
           </div>
 
           {history.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-md">
-              <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">还没有任何挑战记录</p>
-              <p className="text-sm text-gray-400 mt-2">快去玩几局吧！</p>
+            <div className="rounded-2xl border border-[#D3E7F7] bg-[#F6FBFE] p-10 text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-[#93C4EC] bg-[#ABD7FA] text-[#1F2430]">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <p className="text-gray-600">还没有任何挑战记录</p>
+              <p className="mt-2 text-sm text-gray-400">快去玩几局吧！</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -171,13 +207,13 @@ export default function History() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-white rounded-2xl p-4 shadow-md"
+                  className={`rounded-2xl border p-4 ${getRecordPalette(record.game).card}`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-bold text-gray-800">{record.game}</span>
-                        <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${getRecordPalette(record.game).chip}`}>
                           {record.stake}
                         </span>
                       </div>

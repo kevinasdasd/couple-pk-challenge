@@ -16,6 +16,7 @@ import {
   playUiSound,
   startDiceRollingLoop,
 } from "../utils/soundEffects";
+import { getStoredPlayerNames } from "../utils/playerSettings";
 
 type Player = "Kevin" | "Demi";
 type Cell = null | Player;
@@ -414,10 +415,10 @@ function DuelDie({
         repeat: rolling || isWinner ? Infinity : 0,
         ease: "easeInOut",
       }}
-      className={`w-28 h-28 rounded-[2rem] bg-gradient-to-br ${toneClass} p-[3px] border border-white/70`}
+      className={`w-24 h-24 sm:w-28 sm:h-28 rounded-[1.7rem] sm:rounded-[2rem] bg-gradient-to-br ${toneClass} p-[3px] border border-white/70`}
     >
-      <div className="w-full h-full rounded-[1.8rem] bg-white flex items-center justify-center">
-        <div className="grid grid-cols-3 gap-2">
+      <div className="w-full h-full rounded-[1.5rem] sm:rounded-[1.8rem] bg-white flex items-center justify-center">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
           {Array.from({ length: 9 }).map((_, index) => {
             const row = Math.floor(index / 3);
             const col = index % 3;
@@ -425,7 +426,7 @@ function DuelDie({
             return (
               <div
                 key={index}
-                className={`w-3.5 h-3.5 rounded-full ${hasDot ? "bg-current" : "bg-transparent"}`}
+                className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full ${hasDot ? "bg-current" : "bg-transparent"}`}
               />
             );
           })}
@@ -594,6 +595,7 @@ const applySkill = (
 export default function GobangGame() {
   const navigate = useNavigate();
   const { setTrack, enabled: audioEnabled } = useBgm();
+  const [playerNames] = useState(() => getStoredPlayerNames());
   const [board, setBoard] = useState<Board>(createEmptyBoard());
   const [currentPlayer, setCurrentPlayer] = useState<Player>("Kevin");
   const [moveCount, setMoveCount] = useState(0);
@@ -760,8 +762,8 @@ export default function GobangGame() {
     const history = JSON.parse(localStorage.getItem("gameHistory") || "[]");
     history.unshift({
       date: new Date().toISOString(),
-      game: "整活五子棋",
-      loser: winnerPlayer === "Kevin" ? "Demi" : "Kevin",
+      game: "胜天半子",
+      loser: playerNames[winnerPlayer === "Kevin" ? "Demi" : "Kevin"],
       stake,
     });
     localStorage.setItem("gameHistory", JSON.stringify(history.slice(0, 50)));
@@ -1033,10 +1035,6 @@ export default function GobangGame() {
   };
 
   const activeBlockedZones = blockedZones.filter((zone) => moveCount < zone.untilMove);
-  const blockedMovesLeft = activeBlockedZones.length
-    ? Math.max(...activeBlockedZones.map((zone) => zone.untilMove - moveCount))
-    : 0;
-  const skillFramesVisible = !!skillHighlights && moveCount < skillHighlights.expiresAtMove;
   const skillChargeOwner =
     Math.floor(moveCount / 3) % 2 === 0 ? startingPlayer : getOpponent(startingPlayer);
   const skillChargeTheme =
@@ -1047,7 +1045,7 @@ export default function GobangGame() {
           track: "#DDEEFF",
           fill: "#79BDF5",
           accent: "#5B88AB",
-          label: "Kevin 蓄力中",
+          label: `${playerNames.Kevin} 蓄力中`,
         }
       : {
           bg: PALETTE.palePink,
@@ -1055,44 +1053,44 @@ export default function GobangGame() {
           track: "#F8DEEF",
           fill: "#D889E8",
           accent: "#AE68C4",
-          label: "Demi 蓄力中",
+          label: `${playerNames.Demi} 蓄力中`,
         };
 
   return (
-    <div className="min-h-screen app-screen-gradient">
-      <Header title="整活五子棋" showBack showHistory onBackClick={() => setPendingAction("back")} />
+    <div className="app-mobile-page app-screen-gradient">
+      <Header title="胜天半子" showBack showHistory onBackClick={() => setPendingAction("back")} />
 
       {openingStage === "duel" ? (
-        <div className="px-4 py-8">
+        <div className="app-page-content app-page-content--fit">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-md mx-auto"
+            className="app-page-center flex h-full flex-col justify-center gap-4"
           >
             <div
-              className="rounded-[2rem] p-6 border mb-6"
+              className="rounded-[1.75rem] app-page-card border"
               style={{ backgroundColor: PALETTE.paleYellow, borderColor: PALETTE.yellow }}
             >
-              <div className="flex items-center gap-2 justify-center mb-3" style={{ color: PALETTE.ink }}>
+              <div className="flex items-center gap-2 justify-center mb-2" style={{ color: PALETTE.ink }}>
                 <Dices className="w-5 h-5" />
                 <p className="text-sm font-semibold">先手决定战</p>
               </div>
-              <h2 className="text-2xl font-bold text-center mb-2" style={{ color: PALETTE.ink }}>掷骰子比大小</h2>
+              <h2 className="text-[1.65rem] font-bold text-center mb-1.5" style={{ color: PALETTE.ink }}>掷骰子比大小</h2>
               <p className="text-sm text-center" style={{ color: PALETTE.subInk }}>
-                Kevin 在上，Demi 在下。掷 3 秒，点数大的人先手，平局自动重掷。
+                {playerNames.Kevin} 在上，{playerNames.Demi} 在下。掷 3 秒，点数大的人先手，平局自动重掷。
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div
-                className="rounded-[2rem] p-5 border"
+                className="rounded-[1.75rem] p-4 border"
                 style={{ backgroundColor: PALETTE.paleBlue, borderColor: PALETTE.blue }}
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.25em] mb-1" style={{ color: "#5B88AB" }}>Player 1</p>
-                    <p className="text-3xl font-black" style={{ color: PALETTE.ink }}>Kevin</p>
-                    <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>当前点数 {duelDice.Kevin}</p>
+                    <p className="text-[1.7rem] font-black leading-none" style={{ color: PALETTE.ink }}>{playerNames.Kevin}</p>
+                    <p className="text-xs mt-1.5" style={{ color: PALETTE.subInk }}>当前点数 {duelDice.Kevin}</p>
                   </div>
                   <DuelDie
                     value={duelDice.Kevin}
@@ -1107,15 +1105,15 @@ export default function GobangGame() {
                 <motion.div
                   animate={duelStatus === "rolling" ? { scale: [1, 1.08, 1] } : { scale: 1 }}
                   transition={{ duration: 0.8, repeat: duelStatus === "rolling" ? Infinity : 0 }}
-                  className="w-20 h-20 rounded-full text-white flex items-center justify-center border border-white/70"
+                  className="w-16 h-16 rounded-full text-white flex items-center justify-center border border-white/70"
                   style={{ backgroundColor: PALETTE.yellow, color: PALETTE.ink }}
                 >
-                  <span className="text-2xl font-black tracking-wide">VS</span>
+                  <span className="text-xl font-black tracking-wide">VS</span>
                 </motion.div>
               </div>
 
               <div
-                className="rounded-[2rem] p-5 border"
+                className="rounded-[1.75rem] p-4 border"
                 style={{ backgroundColor: PALETTE.palePink, borderColor: PALETTE.pink }}
               >
                 <div className="flex items-center justify-between">
@@ -1127,103 +1125,95 @@ export default function GobangGame() {
                   />
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-[0.25em] mb-1" style={{ color: "#BE7BA7" }}>Player 2</p>
-                    <p className="text-3xl font-black" style={{ color: PALETTE.ink }}>Demi</p>
-                    <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>当前点数 {duelDice.Demi}</p>
+                    <p className="text-[1.7rem] font-black leading-none" style={{ color: PALETTE.ink }}>{playerNames.Demi}</p>
+                    <p className="text-xs mt-1.5" style={{ color: PALETTE.subInk }}>当前点数 {duelDice.Demi}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div
-              className="mt-6 rounded-[2rem] p-5 border text-center"
+              className="rounded-[1.75rem] app-page-card border text-center"
               style={{ backgroundColor: "#FFFFFFCC", borderColor: "#FFFFFF" }}
             >
-              <p className="text-xs uppercase tracking-[0.25em] mb-2" style={{ color: PALETTE.subInk }}>Round {duelRound}</p>
-              <p className="text-xl font-bold mb-2" style={{ color: PALETTE.ink }}>
+              <p className="text-xs uppercase tracking-[0.25em] mb-1.5" style={{ color: PALETTE.subInk }}>Round {duelRound}</p>
+              <p className="text-lg font-bold mb-1.5" style={{ color: PALETTE.ink }}>
                 {duelStatus === "rolling" && "骰子滚动中..."}
                 {duelStatus === "tie" && "平局，加赛一轮"}
-                {duelStatus === "winner" && `${duelWinner} 拿下先手`}
+                {duelStatus === "winner" && duelWinner && `${playerNames[duelWinner]} 拿下先手`}
               </p>
-              <p className="text-sm" style={{ color: PALETTE.subInk }}>
+              <p className="text-xs sm:text-sm" style={{ color: PALETTE.subInk }}>
                 {duelStatus === "rolling" && "3 秒后揭晓结果"}
                 {duelStatus === "tie" && "两个骰子一样大，马上自动重掷"}
-                {duelStatus === "winner" && `本局由 ${duelWinner} 先落第一手`}
+                {duelStatus === "winner" && duelWinner && `本局由 ${playerNames[duelWinner]} 先落第一手`}
               </p>
             </div>
           </motion.div>
         </div>
       ) : (
-        <>
-          <div className="px-3 py-6 sm:px-4">
-            {/* 副标题 */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-4"
+          <div className="app-page-content app-floating-reserve">
+            <div
+              className="app-page-center flex flex-col"
+              style={{ minHeight: "calc(var(--app-content-safe-body-height) - 4.5rem)" }}
             >
-              <p className="text-sm" style={{ color: PALETTE.subInk }}>运气与棋力并存</p>
-            </motion.div>
-
-            {/* 当前回合提示 */}
-            <motion.div
-              key={currentPlayer}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className={`rounded-2xl p-4 text-center border mb-4 ${
-                currentPlayer === "Kevin"
-                  ? ""
-                  : ""
-              }`}
-              style={{
-                backgroundColor: currentPlayer === "Kevin" ? PALETTE.paleBlue : PALETTE.palePink,
-                borderColor: currentPlayer === "Kevin" ? PALETTE.blue : PALETTE.pink,
-              }}
-            >
-              <p className="text-sm mb-1" style={{ color: PALETTE.subInk }}>当前回合</p>
-              <p className="text-2xl font-bold" style={{ color: PALETTE.ink }}>
-                {winner ? `${winner} 获胜！` : `轮到 ${currentPlayer}`}
-              </p>
-            </motion.div>
-
-            {/* 技能能量槽 */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-2xl p-4 border mb-4"
-              style={{ backgroundColor: skillChargeTheme.bg, borderColor: skillChargeTheme.border }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5" style={{ color: skillChargeTheme.accent }} />
-                  <span className="text-sm font-medium" style={{ color: PALETTE.ink }}>技能能量</span>
-                </div>
-                <span className="text-xs" style={{ color: PALETTE.subInk }}>{skillEnergy}/3</span>
-              </div>
-              <div className="w-full rounded-full h-3" style={{ backgroundColor: skillChargeTheme.track }}>
+              <div className="app-page-stack app-page-stack--tight">
+                {/* 当前回合提示 */}
                 <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(skillEnergy / 3) * 100}%` }}
-                  className="h-3 rounded-full transition-all"
-                  style={{ backgroundColor: skillChargeTheme.fill }}
-                />
+                  key={currentPlayer}
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="rounded-2xl p-3.5 text-center border"
+                  style={{
+                    backgroundColor: currentPlayer === "Kevin" ? PALETTE.paleBlue : PALETTE.palePink,
+                    borderColor: currentPlayer === "Kevin" ? PALETTE.blue : PALETTE.pink,
+                  }}
+                >
+                  <p className="text-xs mb-1" style={{ color: PALETTE.subInk }}>当前回合</p>
+                  <p className="text-xl sm:text-2xl font-bold" style={{ color: PALETTE.ink }}>
+                    {winner ? `${playerNames[winner]} 获胜！` : `轮到 ${playerNames[currentPlayer]}`}
+                  </p>
+                </motion.div>
+
+                {/* 技能能量槽 */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-2xl p-3.5 border"
+                  style={{ backgroundColor: skillChargeTheme.bg, borderColor: skillChargeTheme.border }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4.5 h-4.5" style={{ color: skillChargeTheme.accent }} />
+                      <span className="text-sm font-medium" style={{ color: PALETTE.ink }}>技能能量</span>
+                    </div>
+                    <span className="text-xs" style={{ color: PALETTE.subInk }}>{skillEnergy}/3</span>
+                  </div>
+                  <div className="w-full rounded-full h-2.5" style={{ backgroundColor: skillChargeTheme.track }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(skillEnergy / 3) * 100}%` }}
+                      className="h-2.5 rounded-full transition-all"
+                      style={{ backgroundColor: skillChargeTheme.fill }}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs" style={{ color: PALETTE.subInk }}>每3手触发一次技能</p>
+                    <p className="text-xs font-semibold" style={{ color: skillChargeTheme.accent }}>
+                      {skillChargeTheme.label}
+                    </p>
+                  </div>
+                </motion.div>
               </div>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs" style={{ color: PALETTE.subInk }}>每3手触发一次技能</p>
-                <p className="text-xs font-semibold" style={{ color: skillChargeTheme.accent }}>
-                  {skillChargeTheme.label}
-                </p>
-              </div>
-            </motion.div>
 
             {isDebugMode && (
               <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-2xl p-4 border mb-4"
-              style={{ backgroundColor: PALETTE.paleYellow, borderColor: PALETTE.yellow, color: PALETTE.ink }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <Bug className="w-4 h-4" />
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="rounded-2xl p-4 border mt-3"
+                style={{ backgroundColor: PALETTE.paleYellow, borderColor: PALETTE.yellow, color: PALETTE.ink }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Bug className="w-4 h-4" />
                   <p className="text-sm font-semibold">Debug 测试面板（仅开发模式）</p>
                 </div>
 
@@ -1236,7 +1226,7 @@ export default function GobangGame() {
                     className="rounded-xl px-3 py-2 text-xs font-medium border"
                     style={{ backgroundColor: PALETTE.paleBlue, borderColor: PALETTE.blue, color: PALETTE.ink }}
                   >
-                    强制当前玩家 Kevin
+                    强制当前玩家 {playerNames.Kevin}
                   </button>
                   <button
                     onClick={() => {
@@ -1246,7 +1236,7 @@ export default function GobangGame() {
                     className="rounded-xl px-3 py-2 text-xs font-medium border"
                     style={{ backgroundColor: PALETTE.palePink, borderColor: PALETTE.pink, color: PALETTE.ink }}
                   >
-                    强制当前玩家 Demi
+                    强制当前玩家 {playerNames.Demi}
                   </button>
                 </div>
 
@@ -1298,91 +1288,93 @@ export default function GobangGame() {
               </motion.div>
             )}
 
-            {/* 棋盘 */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="-mx-2 sm:mx-0 rounded-2xl p-2 sm:p-3 border mb-6"
-              style={{ backgroundColor: PALETTE.yellow, borderColor: "#F5DA57" }}
-            >
-              <div className="rounded-xl p-1.5 sm:p-2" style={{ backgroundColor: PALETTE.paleYellow }}>
-                <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}>
-                  {board.map((row, rowIndex) =>
-                    row.map((cell, colIndex) => {
-                      const cellIndex = rowIndex * BOARD_SIZE + colIndex;
-                      const showDestinyFill = destinyFillCount > 0 && cellIndex < destinyFillCount;
-                      const displayCell: Cell = showDestinyFill ? destinyFillPlayer : cell;
-                      const isWinningCell = winningLine.some(
-                        ([r, c]) => r === rowIndex && c === colIndex
-                      );
-                      const highlightKind = getHighlightKind(rowIndex, colIndex);
-                      const isBlockedCell =
-                        !displayCell && isCellBlocked(activeBlockedZones, moveCount, rowIndex, colIndex);
-                      const isPendingCell = pendingMove?.[0] === rowIndex && pendingMove?.[1] === colIndex;
+            <div className="flex-1 flex flex-col justify-center">
+              {/* 棋盘 */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="-mx-1 sm:mx-0 rounded-2xl p-1.5 sm:p-2 border mt-3 mb-4"
+                style={{ backgroundColor: PALETTE.yellow, borderColor: "#F5DA57" }}
+              >
+                <div className="rounded-xl p-1 sm:p-1.5" style={{ backgroundColor: PALETTE.paleYellow }}>
+                  <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}>
+                    {board.map((row, rowIndex) =>
+                      row.map((cell, colIndex) => {
+                        const cellIndex = rowIndex * BOARD_SIZE + colIndex;
+                        const showDestinyFill = destinyFillCount > 0 && cellIndex < destinyFillCount;
+                        const displayCell: Cell = showDestinyFill ? destinyFillPlayer : cell;
+                        const isWinningCell = winningLine.some(
+                          ([r, c]) => r === rowIndex && c === colIndex
+                        );
+                        const highlightKind = getHighlightKind(rowIndex, colIndex);
+                        const isBlockedCell =
+                          !displayCell && isCellBlocked(activeBlockedZones, moveCount, rowIndex, colIndex);
+                        const isPendingCell = pendingMove?.[0] === rowIndex && pendingMove?.[1] === colIndex;
 
-                      return (
-                        <motion.button
-                          key={`${rowIndex}-${colIndex}`}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleCellClick(rowIndex, colIndex)}
-                          disabled={!!winner || !!displayCell || isBlockedCell}
-                          className={`aspect-square relative border border-amber-300/50 transition-colors ${
-                            isBlockedCell
-                              ? "bg-red-200/40 cursor-not-allowed"
-                              : ""
-                          }`}
-                          style={{
-                            borderColor: PALETTE.line,
-                            backgroundColor: isBlockedCell ? undefined : "transparent",
-                            minWidth: 0,
-                          }}
-                        >
-                          {isPendingCell && !displayCell && (
-                            <motion.div
-                              initial={{ opacity: 0.5, scale: 0.9 }}
-                              animate={{ opacity: [0.45, 1, 0.45], scale: [0.9, 1, 0.9] }}
-                              transition={{ duration: 0.95, repeat: Infinity }}
-                              className="absolute inset-0.5 rounded-sm border-2 z-20"
-                              style={{ borderColor: PALETTE.yellow, backgroundColor: "rgba(255,234,111,0.28)" }}
-                            />
-                          )}
-                          {isBlockedCell && (
-                            <div className="absolute inset-0.5 rounded-sm border border-red-400/70 bg-red-300/20" />
-                          )}
-                          {highlightKind && (
-                            <motion.div
-                              initial={{ opacity: 0.3, scale: 0.9 }}
-                              animate={{ opacity: [0.5, 1, 0.5], scale: [0.92, 1, 0.92] }}
-                              transition={{ duration: 1.05, repeat: Infinity }}
-                              className={`absolute inset-0.5 rounded-sm pointer-events-none z-20 ${HIGHLIGHT_CLASS_MAP[highlightKind]}`}
-                            />
-                          )}
-                          <AnimatePresence>
-                            {displayCell && (
+                        return (
+                          <motion.button
+                            key={`${rowIndex}-${colIndex}`}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleCellClick(rowIndex, colIndex)}
+                            disabled={!!winner || !!displayCell || isBlockedCell}
+                            className={`aspect-square relative border border-amber-300/50 transition-colors ${
+                              isBlockedCell
+                                ? "bg-red-200/40 cursor-not-allowed"
+                                : ""
+                            }`}
+                            style={{
+                              borderColor: PALETTE.line,
+                              backgroundColor: isBlockedCell ? undefined : "transparent",
+                              minWidth: 0,
+                            }}
+                          >
+                            {isPendingCell && !displayCell && (
                               <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute inset-0.5 flex items-center justify-center"
-                              >
-                                <div
-                                  className={`w-full h-full rounded-full ${isWinningCell ? "border-2" : "border"}`}
-                                  style={{
-                                    background: displayCell === "Kevin"
-                                      ? "linear-gradient(135deg, #ABD7FA 0%, #90C3F4 100%)"
-                                      : "linear-gradient(135deg, #FFC9EF 0%, #F6B7E6 100%)",
-                                    borderColor: isWinningCell ? PALETTE.yellow : "rgba(255,255,255,0.65)",
-                                  }}
-                                />
-                              </motion.div>
+                                initial={{ opacity: 0.5, scale: 0.9 }}
+                                animate={{ opacity: [0.45, 1, 0.45], scale: [0.9, 1, 0.9] }}
+                                transition={{ duration: 0.95, repeat: Infinity }}
+                                className="absolute inset-0.5 rounded-sm border-2 z-20"
+                                style={{ borderColor: PALETTE.yellow, backgroundColor: "rgba(255,234,111,0.28)" }}
+                              />
                             )}
-                          </AnimatePresence>
-                        </motion.button>
-                      );
-                    })
-                  )}
+                            {isBlockedCell && (
+                              <div className="absolute inset-0.5 rounded-sm border border-red-400/70 bg-red-300/20" />
+                            )}
+                            {highlightKind && (
+                              <motion.div
+                                initial={{ opacity: 0.3, scale: 0.9 }}
+                                animate={{ opacity: [0.5, 1, 0.5], scale: [0.92, 1, 0.92] }}
+                                transition={{ duration: 1.05, repeat: Infinity }}
+                                className={`absolute inset-0.5 rounded-sm pointer-events-none z-20 ${HIGHLIGHT_CLASS_MAP[highlightKind]}`}
+                              />
+                            )}
+                            <AnimatePresence>
+                              {displayCell && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="absolute inset-0.5 flex items-center justify-center"
+                                >
+                                  <div
+                                    className={`w-full h-full rounded-full ${isWinningCell ? "border-2" : "border"}`}
+                                    style={{
+                                      background: displayCell === "Kevin"
+                                        ? "linear-gradient(135deg, #ABD7FA 0%, #90C3F4 100%)"
+                                        : "linear-gradient(135deg, #FFC9EF 0%, #F6B7E6 100%)",
+                                      borderColor: isWinningCell ? PALETTE.yellow : "rgba(255,255,255,0.65)",
+                                    }}
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
 
             {/* 操作按钮 */}
             <div className="flex gap-3">
@@ -1391,10 +1383,10 @@ export default function GobangGame() {
                   playUiSound("confirm", audioEnabled);
                   setPendingAction("reset");
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full active:scale-95 transition-all font-medium border"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full active:scale-95 transition-all font-medium border text-sm"
                 style={{ backgroundColor: PALETTE.paleYellow, borderColor: PALETTE.yellow, color: PALETTE.ink }}
               >
-                <RotateCcw className="w-5 h-5" />
+                <RotateCcw className="w-4.5 h-4.5" />
                 重新开始
               </button>
               <button
@@ -1402,39 +1394,30 @@ export default function GobangGame() {
                   playUiSound("back", audioEnabled);
                   setPendingAction("home");
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full active:scale-95 transition-all font-medium border"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full active:scale-95 transition-all font-medium border text-sm"
                 style={{ backgroundColor: PALETTE.pink, borderColor: "#F5B6E1", color: PALETTE.ink }}
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-4.5 h-4.5" />
                 返回主页
               </button>
             </div>
           </div>
 
           <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="sticky bottom-0 z-30 px-3 pb-4 sm:px-4"
-        >
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="sticky bottom-0 z-30 px-3 sm:px-4 app-floating-dock"
+          >
             <div
-              className="rounded-2xl p-3 border"
-              style={{ backgroundColor: "#FFFFFFEB", borderColor: PALETTE.yellow }}
+              className="rounded-2xl border p-2.5"
+              style={{
+                backgroundColor: pendingMove ? "#FFFFFFF2" : "#FFFFFFE8",
+                borderColor: pendingMove ? PALETTE.yellow : "#E8E6D8",
+              }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold" style={{ color: PALETTE.ink }}>
-                  {pendingMove ? `已选中 ${pendingMove[0] + 1} 行 ${pendingMove[1] + 1} 列` : "请选择落点"}
-                </p>
-                <div className="text-right">
-                  {blockedMovesLeft > 0 && (
-                    <p className="text-[11px] text-red-500">
-                      封锁区 {activeBlockedZones.length} 个
-                    </p>
-                  )}
-                  {skillFramesVisible && (
-                    <p className="text-[11px] text-purple-600">技能标注高亮中</p>
-                  )}
-                </div>
-              </div>
+              <p className="sr-only" aria-live="polite">
+                {pendingMove ? `已选中 ${pendingMove[0] + 1} 行 ${pendingMove[1] + 1} 列` : "请选择落点"}
+              </p>
 
               <div className="flex items-center gap-2">
                 <button
@@ -1472,7 +1455,7 @@ export default function GobangGame() {
               </div>
             </div>
           </motion.div>
-        </>
+          </div>
       )}
 
       {/* 技能触发弹窗 */}
@@ -1481,22 +1464,23 @@ export default function GobangGame() {
           onClose={() => setShowSkillModal(false)}
           skillName={currentSkill.name}
           skillDescription={currentSkill.description}
-          playerName={skillOwner}
+          playerId={skillOwner}
+          playerName={playerNames[skillOwner]}
         />
 
       {/* 天命弹窗 */}
       <DestinyModal
         isOpen={showDestinyModal}
         onClose={() => setShowDestinyModal(false)}
-        winnerName={destinyWinner}
+        winnerName={playerNames[destinyWinner]}
       />
 
       {/* 获胜弹窗 */}
       <ResultModal
         isOpen={showResultModal}
         onClose={() => setShowResultModal(false)}
-        winner={winner || ""}
-        loser={winner === "Kevin" ? "Demi" : "Kevin"}
+        winner={winner ? playerNames[winner] : ""}
+        loser={winner ? playerNames[winner === "Kevin" ? "Demi" : "Kevin"] : ""}
         stake={currentStake}
         message={
           currentStake === "谁是大皇帝"

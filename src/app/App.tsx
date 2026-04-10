@@ -5,7 +5,7 @@ import { BgmProvider } from "./components/BgmProvider";
 export default function App() {
   return (
     <BgmProvider>
-      <div className="max-w-md mx-auto bg-white min-h-screen">
+      <div className="app-shell max-w-md mx-auto">
         <RouterProvider router={router} />
       </div>
     </BgmProvider>

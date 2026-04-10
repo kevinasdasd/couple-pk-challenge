@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { DEFAULT_BGM_SOURCE, useBgm } from "../components/BgmProvider";
+import { getStoredPlayerNames } from "../utils/playerSettings";
 import { playAudioEffect, playCrocodileBiteImpactSound } from "../utils/soundEffects";
 
 const STAKE_LABELS: Record<string, string> = {
@@ -18,8 +19,7 @@ const STAKE_LABELS: Record<string, string> = {
 };
 
 export default function CrocodileGame() {
-  const [player1Name] = useState("Demi");
-  const [player2Name] = useState("Kevin");
+  const [playerNames] = useState(() => getStoredPlayerNames());
   const [gameStarted, setGameStarted] = useState(true);
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [teeth, setTeeth] = useState<boolean[]>(Array(12).fill(false));
@@ -29,6 +29,8 @@ export default function CrocodileGame() {
   const [isBiting, setIsBiting] = useState(false);
   const [currentStake, setCurrentStake] = useState("请吃饭");
   const { setTrack, enabled: audioEnabled } = useBgm();
+  const player1Name = playerNames.Demi;
+  const player2Name = playerNames.Kevin;
 
   const getCurrentStake = () => {
     const selectedStakeIds = JSON.parse(localStorage.getItem("selectedStakes") || "[]");
@@ -124,14 +126,14 @@ export default function CrocodileGame() {
   };
 
   return (
-    <div className="min-h-screen app-screen-gradient">
+    <div className="app-mobile-page app-screen-gradient">
       <Header title="鳄鱼拔牙" showBack showHistory />
 
-      <div className="px-6 py-8">
+      <div className="app-page-content">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="space-y-6"
+          className="app-page-center app-page-content--fit flex flex-col gap-4"
         >
           {/* Current player indicator */}
           {!gameOver && (
@@ -139,14 +141,14 @@ export default function CrocodileGame() {
               key={currentPlayer}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className={`rounded-2xl p-4 text-center shadow-lg ${
+              className={`rounded-2xl p-3 text-center shadow-lg ${
                 currentPlayer === 1
                   ? "bg-gradient-to-br from-orange-100 to-orange-200"
                   : "bg-gradient-to-br from-blue-100 to-blue-200"
               }`}
             >
-              <p className="text-sm text-gray-600 mb-1">当前轮到</p>
-              <p className="text-2xl font-bold text-gray-800">
+              <p className="text-xs text-gray-600 mb-1">当前轮到</p>
+              <p className="text-xl font-bold text-gray-800">
                 {currentPlayer === 1 ? player1Name : player2Name}
               </p>
             </motion.div>
@@ -157,17 +159,17 @@ export default function CrocodileGame() {
             <motion.div
               animate={isBiting ? { rotate: [0, -5, 5, -5, 5, 0] } : {}}
               transition={{ duration: 0.5 }}
-              className={`rounded-3xl p-8 shadow-2xl transition-colors duration-300 ${
+              className={`rounded-3xl p-6 shadow-2xl transition-colors duration-300 ${
                 isBiting
                   ? "bg-gradient-to-br from-red-500 to-red-700"
                   : "bg-gradient-to-br from-green-400 to-green-600"
               }`}
             >
-              <div className="text-center mb-4">
+              <div className="text-center mb-3">
                 <motion.div
                   animate={isBiting ? { scale: [1, 1.2, 1] } : {}}
                   transition={{ duration: 0.5 }}
-                  className="text-6xl mb-2"
+                  className="text-5xl mb-1"
                 >
                   🐊
                 </motion.div>
@@ -183,7 +185,7 @@ export default function CrocodileGame() {
               </div>
 
               {/* Teeth */}
-              <div className="grid grid-cols-6 gap-3">
+              <div className="grid grid-cols-6 gap-2.5">
                 {teeth.map((pressed, index) => (
                   <motion.button
                     key={index}
@@ -195,20 +197,20 @@ export default function CrocodileGame() {
                         ? "bg-green-700 shadow-inner"
                         : "bg-white shadow-lg hover:shadow-xl active:shadow-inner"
                     }`}
-                  >
-                    {!pressed && (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-3 h-6 bg-gray-200 rounded-sm" />
-                      </div>
-                    )}
-                  </motion.button>
+                    >
+                      {!pressed && (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-3 h-5 bg-gray-200 rounded-sm" />
+                        </div>
+                      )}
+                    </motion.button>
                 ))}
               </div>
             </motion.div>
           </div>
 
           {/* Progress */}
-          <div className="bg-white rounded-2xl p-4 shadow-lg">
+          <div className="bg-white rounded-2xl p-3 shadow-lg">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">已按下</span>
               <span className="text-sm font-bold text-gray-800">
@@ -225,7 +227,7 @@ export default function CrocodileGame() {
           </div>
 
           {gameOver && (
-            <Button size="lg" variant="secondary" onClick={resetGame} className="w-full">
+            <Button size="md" variant="secondary" onClick={resetGame} className="w-full">
               再来一局
             </Button>
           )}

@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useBgm } from "../components/BgmProvider";
+import { getPlayerInitial, getStoredPlayerNames, type PlayerId } from "../utils/playerSettings";
 import {
   playDiceRevealSound,
   playInvalidActionSound,
@@ -40,9 +41,9 @@ const STAKE_LABELS: Record<string, string> = {
 };
 
 export default function DiceGame() {
-  const [player1, setPlayer1] = useState<Player>({ name: "Kevin", guess: "" });
-  const [player2, setPlayer2] = useState<Player>({ name: "Demi", guess: "" });
-  const [activePlayer, setActivePlayer] = useState<"Kevin" | "Demi" | null>(null);
+  const [player1, setPlayer1] = useState<Player>({ name: getStoredPlayerNames().Kevin, guess: "" });
+  const [player2, setPlayer2] = useState<Player>({ name: getStoredPlayerNames().Demi, guess: "" });
+  const [activePlayer, setActivePlayer] = useState<PlayerId | null>(null);
   const [gameState, setGameState] = useState<"setup" | "rolling" | "result">("setup");
   const [diceResults, setDiceResults] = useState<number[]>([1, 1, 1]);
   const [showResult, setShowResult] = useState(false);
@@ -70,6 +71,10 @@ export default function DiceGame() {
   };
 
   useEffect(() => {
+    const playerNames = getStoredPlayerNames();
+    setPlayer1((current) => ({ ...current, name: playerNames.Kevin }));
+    setPlayer2((current) => ({ ...current, name: playerNames.Demi }));
+
     return () => {
       stopRollingEffects();
     };
@@ -172,8 +177,9 @@ export default function DiceGame() {
 
   const resetGame = () => {
     stopRollingEffects();
-    setPlayer1({ name: "Kevin", guess: "" });
-    setPlayer2({ name: "Demi", guess: "" });
+    const playerNames = getStoredPlayerNames();
+    setPlayer1({ name: playerNames.Kevin, guess: "" });
+    setPlayer2({ name: playerNames.Demi, guess: "" });
     setActivePlayer(null);
     setGameState("setup");
     setDiceResults([1, 1, 1]);
@@ -216,126 +222,126 @@ export default function DiceGame() {
   };
 
   return (
-    <div className="min-h-screen app-screen-gradient">
+    <div className="app-mobile-page app-screen-gradient">
       <Header title="骰子猜点" showBack showHistory />
 
-      <div className="px-6 py-8">
+      <div className="app-page-content">
         {gameState === "setup" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="space-y-6"
+            className="app-page-center app-page-content--fit flex flex-col gap-4"
           >
             {/* Game visual */}
-            <div className="relative h-48 rounded-3xl overflow-hidden mb-6 border border-white/80">
+            <div className="relative h-36 rounded-[1.75rem] overflow-hidden border border-white/80">
               <ImageWithFallback
                 src="/images/dice-fight.png"
                 alt="骰子游戏"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-center pb-6">
-                <p className="text-white font-bold text-lg">猜猜三个骰子的总点数</p>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end justify-center pb-4">
+                <p className="text-white font-bold text-base">猜猜三个骰子的总点数</p>
               </div>
             </div>
 
-            {/* Player 1 */}
-            <div
-              className="rounded-[28px] p-5 border transition-colors"
-              style={{
-                backgroundColor: PALETTE.paleBlue,
-                borderColor: activePlayer === "Kevin" ? PALETTE.blue : "#FFFFFF",
-              }}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-2xl"
-                  style={{ backgroundColor: PALETTE.blue }}
-                >
-                  K
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-[32px] leading-none" style={{ color: PALETTE.ink }}>
-                    凯文
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
-                    输入猜测分数 (3-18)
-                  </p>
-                </div>
-              </div>
+            <div className="app-page-stack app-page-stack--tight">
               <div
-                className="rounded-[24px] border-2 px-4 py-3 transition-colors"
+                className="rounded-[1.75rem] p-4 border transition-colors"
                 style={{
-                  backgroundColor: "#FFFFFF",
-                  borderColor: activePlayer === "Kevin" ? PALETTE.blue : "#E9EEF5",
+                  backgroundColor: PALETTE.paleBlue,
+                  borderColor: activePlayer === "Kevin" ? PALETTE.blue : "#FFFFFF",
                 }}
               >
-                <input
-                  type="number"
-                  placeholder="输入数字"
-                  min="3"
-                  max="18"
-                  value={player1.guess}
-                  onFocus={() => setActivePlayer("Kevin")}
-                  onBlur={() => setActivePlayer((current) => (current === "Kevin" ? null : current))}
-                  onChange={(e) => setPlayer1({ ...player1, guess: e.target.value })}
-                  className="w-full bg-transparent text-center text-2xl font-bold outline-none"
-                  style={{ color: PALETTE.ink }}
-                />
-              </div>
-            </div>
-
-            {/* Player 2 */}
-            <div
-              className="rounded-[28px] p-5 border transition-colors"
-              style={{
-                backgroundColor: PALETTE.palePink,
-                borderColor: activePlayer === "Demi" ? PALETTE.pink : "#FFFFFF",
-              }}
-            >
-              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl"
+                    style={{ backgroundColor: PALETTE.blue }}
+                  >
+                    {getPlayerInitial(player1.name)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-[28px] leading-none" style={{ color: PALETTE.ink }}>
+                      {player1.name}
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
+                      输入猜测分数 (3-18)
+                    </p>
+                  </div>
+                </div>
                 <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-2xl"
-                  style={{ backgroundColor: PALETTE.pink }}
+                  className="rounded-[1.35rem] border-2 px-4 py-2.5 transition-colors"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: activePlayer === "Kevin" ? PALETTE.blue : "#E9EEF5",
+                  }}
                 >
-                  D
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-[32px] leading-none" style={{ color: PALETTE.ink }}>
-                    黛米
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
-                    输入猜测分数 (3-18)
-                  </p>
+                  <input
+                    type="number"
+                    placeholder="输入数字"
+                    min="3"
+                    max="18"
+                    value={player1.guess}
+                    onFocus={() => setActivePlayer("Kevin")}
+                    onBlur={() => setActivePlayer((current) => (current === "Kevin" ? null : current))}
+                    onChange={(e) => setPlayer1({ ...player1, guess: e.target.value })}
+                    className="w-full bg-transparent text-center text-2xl font-bold outline-none"
+                    style={{ color: PALETTE.ink }}
+                  />
                 </div>
               </div>
+
               <div
-                className="rounded-[24px] border-2 px-4 py-3 transition-colors"
+                className="rounded-[1.75rem] p-4 border transition-colors"
                 style={{
-                  backgroundColor: "#FFFFFF",
-                  borderColor: activePlayer === "Demi" ? PALETTE.pink : "#F5E8F1",
+                  backgroundColor: PALETTE.palePink,
+                  borderColor: activePlayer === "Demi" ? PALETTE.pink : "#FFFFFF",
                 }}
               >
-                <input
-                  type="number"
-                  placeholder="输入数字"
-                  min="3"
-                  max="18"
-                  value={player2.guess}
-                  onFocus={() => setActivePlayer("Demi")}
-                  onBlur={() => setActivePlayer((current) => (current === "Demi" ? null : current))}
-                  onChange={(e) => setPlayer2({ ...player2, guess: e.target.value })}
-                  className="w-full bg-transparent text-center text-2xl font-bold outline-none"
-                  style={{ color: PALETTE.ink }}
-                />
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-xl"
+                    style={{ backgroundColor: PALETTE.pink }}
+                  >
+                    {getPlayerInitial(player2.name)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-[28px] leading-none" style={{ color: PALETTE.ink }}>
+                      {player2.name}
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: PALETTE.subInk }}>
+                      输入猜测分数 (3-18)
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className="rounded-[1.35rem] border-2 px-4 py-2.5 transition-colors"
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    borderColor: activePlayer === "Demi" ? PALETTE.pink : "#F5E8F1",
+                  }}
+                >
+                  <input
+                    type="number"
+                    placeholder="输入数字"
+                    min="3"
+                    max="18"
+                    value={player2.guess}
+                    onFocus={() => setActivePlayer("Demi")}
+                    onBlur={() => setActivePlayer((current) => (current === "Demi" ? null : current))}
+                    onChange={(e) => setPlayer2({ ...player2, guess: e.target.value })}
+                    className="w-full bg-transparent text-center text-2xl font-bold outline-none"
+                    style={{ color: PALETTE.ink }}
+                  />
+                </div>
               </div>
             </div>
 
-            <Button size="lg" onClick={rollDice} className="w-full">
+            <Button size="md" onClick={rollDice} className="w-full">
               <Dices className="w-5 h-5 inline mr-2" />
               开启挑战
             </Button>
 
-            <p className="text-center text-sm" style={{ color: PALETTE.subInk }}>
+            <p className="text-center text-xs" style={{ color: PALETTE.subInk }}>
               点数范围：3-18 · 猜得最接近的人获胜
             </p>
           </motion.div>
@@ -345,7 +351,7 @@ export default function DiceGame() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
+            className="app-page-center text-center"
           >
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">

@@ -2,6 +2,19 @@
 
 :root {
   --font-size: 16px;
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-mini-program-chrome: clamp(48px, 5.8dvh, 56px);
+  --app-header-height: 64px;
+  --app-content-safe-height: calc(
+    100dvh - var(--app-mini-program-chrome) - var(--app-safe-top) - var(--app-safe-bottom)
+  );
+  --app-content-safe-body-height: calc(var(--app-content-safe-height) - var(--app-header-height));
+  --app-page-px: clamp(14px, 4vw, 24px);
+  --app-page-py: clamp(12px, 2dvh, 24px);
+  --app-section-gap: clamp(12px, 1.8dvh, 20px);
+  --app-support-gap: clamp(10px, 1.4dvh, 16px);
+  --app-card-padding: clamp(12px, 1.7dvh, 18px);
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
   --card: #ffffff;
@@ -167,6 +180,53 @@
       rgba(255, 234, 111, 0.03) 68%,
       rgba(255, 234, 111, 0) 100%
     );
+  }
+
+  .app-shell {
+    min-height: 100dvh;
+  }
+
+  .app-mobile-page {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-page-content {
+    flex: 1;
+    padding: var(--app-page-py) var(--app-page-px) calc(var(--app-page-py) + var(--app-safe-bottom));
+  }
+
+  .app-page-content--fit {
+    min-height: var(--app-content-safe-body-height);
+  }
+
+  .app-page-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-section-gap);
+  }
+
+  .app-page-stack--tight {
+    gap: var(--app-support-gap);
+  }
+
+  .app-page-card {
+    padding: var(--app-card-padding);
+  }
+
+  .app-page-center {
+    width: 100%;
+    max-width: 28rem;
+    margin-inline: auto;
+  }
+
+  .app-floating-reserve {
+    padding-bottom: calc(4.75rem + var(--app-safe-bottom));
+  }
+
+  .app-floating-dock {
+    padding-bottom: calc(0.625rem + var(--app-safe-bottom));
   }
 
   /**

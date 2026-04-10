@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Check, Plus, Coffee, Hand, Utensils, Crown, ShoppingCart, PackageCheck, UtensilsCrossed } from "lucide-react";
+import { Check, Plus, Coffee, Hand, Utensils, Crown, ShoppingCart, PackageCheck } from "lucide-react";
 import { Header } from "../components/Header";
-import { Button } from "../components/Button";
 import { useBgm } from "../components/BgmProvider";
 import { playUiSound } from "../utils/soundEffects";
+import { DEFAULT_PLAYER_NAMES, setStoredPlayerName, getStoredPlayerNames } from "../utils/playerSettings";
+
+const STAKE_PALETTE = {
+  yellow: {
+    strong: "bg-[#FFEA6F] border-[#F3D95C] text-[#1F2430]",
+    soft: "bg-[#FFFDF0] border-[#F3E7A5] text-[#38404C]",
+    ring: "focus:ring-[#FFEA6F]",
+    check: "text-[#B89511]",
+    chip: "bg-[#FFF6C6] text-[#6D5B16]",
+  },
+} as const;
 
 const DEFAULT_STAKES = [
   { id: "coffee", label: "买咖啡", icon: Coffee },
@@ -19,6 +29,8 @@ export default function StakeSettings() {
   const [selectedStakes, setSelectedStakes] = useState<string[]>([]);
   const [customStakes, setCustomStakes] = useState<string[]>([]);
   const [newStake, setNewStake] = useState("");
+  const [maleName, setMaleName] = useState(DEFAULT_PLAYER_NAMES.Kevin);
+  const [femaleName, setFemaleName] = useState(DEFAULT_PLAYER_NAMES.Demi);
   const { enabled: audioEnabled } = useBgm();
 
   useEffect(() => {
@@ -33,7 +45,23 @@ export default function StakeSettings() {
     if (savedCustom) {
       setCustomStakes(JSON.parse(savedCustom));
     }
+
+    const storedNames = getStoredPlayerNames();
+    setMaleName(storedNames.Kevin);
+    setFemaleName(storedNames.Demi);
   }, []);
+
+  const commitPlayerName = (player: "Kevin" | "Demi", value: string) => {
+    const fallback = DEFAULT_PLAYER_NAMES[player];
+    const nextName = value.trim().slice(0, 20) || fallback;
+    setStoredPlayerName(player, nextName);
+
+    if (player === "Kevin") {
+      setMaleName(nextName);
+      return;
+    }
+    setFemaleName(nextName);
+  };
 
   const toggleStake = (id: string) => {
     playUiSound(selectedStakes.includes(id) ? "back" : "confirm", audioEnabled);
@@ -61,142 +89,182 @@ export default function StakeSettings() {
   };
 
   return (
-    <div className="min-h-screen app-screen-gradient pb-8">
+    <div className="app-mobile-page app-screen-gradient">
       <Header title="赌注设置" showBack showHistory />
 
-      <div className="px-6 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 text-center"
-        >
-          <p className="text-gray-600">选择游戏失败后要做的事情</p>
-        </motion.div>
+      <div className="app-page-content">
+        <div className="app-page-center app-page-content--fit flex flex-col gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.02 }}
+          >
+            <h3 className="font-bold text-gray-800 mb-3 text-[1.05rem]">对局名字</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="rounded-2xl border border-[#ABD7FA] bg-[#F6FBFE] p-3">
+                <span className="block text-xs font-medium text-[#5B88AB] mb-1.5">男生名字</span>
+                <input
+                  type="text"
+                  value={maleName}
+                  maxLength={20}
+                  placeholder={DEFAULT_PLAYER_NAMES.Kevin}
+                  onChange={(e) => setMaleName(e.target.value)}
+                  onBlur={() => commitPlayerName("Kevin", maleName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      commitPlayerName("Kevin", maleName);
+                    }
+                  }}
+                  className="w-full bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-[#ABD7FA]"
+                />
+              </label>
 
-        {/* Preset stakes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <h3 className="font-bold text-gray-800 mb-4">常用赌注</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {DEFAULT_STAKES.map((stake) => {
-              const IconComponent = stake.icon;
-              return (
-                <motion.button
-                  key={stake.id}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => toggleStake(stake.id)}
-                  className={`relative rounded-2xl p-4 shadow-md transition-all ${
-                    selectedStakes.includes(stake.id)
-                      ? "bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-lg scale-105"
-                      : "bg-white text-gray-800 hover:shadow-lg"
-                  }`}
-                >
-                  <div className="mb-3 flex justify-center">
-                    <IconComponent className="w-8 h-8" strokeWidth={2} />
-                  </div>
-                  <div className="font-medium">{stake.label}</div>
-                  {selectedStakes.includes(stake.id) && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center"
-                    >
-                      <Check className="w-4 h-4 text-orange-500" />
-                    </motion.div>
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        {/* Custom stakes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-8"
-        >
-          <h3 className="font-bold text-gray-800 mb-4">自定义赌注</h3>
-          
-          <div className="bg-white rounded-2xl p-4 shadow-lg mb-4">
-            <div className="flex gap-3">
-              <input
-                type="text"
-                placeholder="输入自定义赌注..."
-                value={newStake}
-                onChange={(e) => setNewStake(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    addCustomStake();
-                  }
-                }}
-                className="flex-1 bg-gray-50 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-orange-300"
-              />
-              <button
-                onClick={addCustomStake}
-                className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl flex items-center justify-center text-white shadow-md hover:shadow-lg transition-shadow"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              <label className="rounded-2xl border border-[#FFC9EF] bg-[#FFF9FD] p-3">
+                <span className="block text-xs font-medium text-[#BE7BA7] mb-1.5">女生名字</span>
+                <input
+                  type="text"
+                  value={femaleName}
+                  maxLength={20}
+                  placeholder={DEFAULT_PLAYER_NAMES.Demi}
+                  onChange={(e) => setFemaleName(e.target.value)}
+                  onBlur={() => commitPlayerName("Demi", femaleName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      commitPlayerName("Demi", femaleName);
+                    }
+                  }}
+                  className="w-full bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-[#FFC9EF]"
+                />
+              </label>
             </div>
-          </div>
+          </motion.div>
 
-          {customStakes.length > 0 && (
-            <div className="space-y-2">
-              {customStakes.map((stake, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-xl p-4 shadow-md flex items-center justify-between"
-                >
-                  <span className="text-gray-800">{stake}</span>
-                  <button
-                    onClick={() => removeCustomStake(stake)}
-                    className="text-red-500 hover:text-red-600 font-medium text-sm"
-                  >
-                    删除
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Current selection summary */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 shadow-lg"
-        >
-          <h4 className="font-bold text-gray-800 mb-3">当前已选择</h4>
-          {selectedStakes.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {selectedStakes.map((id) => {
-                const stake = DEFAULT_STAKES.find((s) => s.id === id);
-                if (!stake) return null;
+          {/* Preset stakes */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <h3 className="font-bold text-gray-800 mb-3 text-[1.05rem]">常用赌注</h3>
+            <div className="grid grid-cols-3 auto-rows-fr gap-2">
+              {DEFAULT_STAKES.map((stake) => {
                 const IconComponent = stake.icon;
+                const isSelected = selectedStakes.includes(stake.id);
+                const palette = STAKE_PALETTE.yellow;
                 return (
-                  <div
-                    key={id}
-                    className="bg-white px-4 py-2 rounded-full text-sm font-medium text-gray-700 shadow-sm flex items-center gap-2"
+                  <motion.button
+                    key={stake.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => toggleStake(stake.id)}
+                    className={`relative flex h-full min-h-[108px] flex-col items-center justify-center rounded-[1.35rem] border p-3 transition-all ${
+                      isSelected ? palette.strong : palette.soft
+                    }`}
                   >
-                    <IconComponent className="w-4 h-4" />
-                    {stake.label}
-                  </div>
+                    <div className="mb-2 flex justify-center">
+                      <IconComponent className="w-6 h-6" strokeWidth={2} />
+                    </div>
+                    <div className="flex min-h-9 items-center justify-center text-center text-sm font-medium leading-tight">
+                      {stake.label}
+                    </div>
+                    {isSelected && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute top-1.5 right-1.5 w-5 h-5 bg-white/90 rounded-full flex items-center justify-center border border-white"
+                      >
+                        <Check className={`w-3.5 h-3.5 ${palette.check}`} />
+                      </motion.div>
+                    )}
+                  </motion.button>
                 );
               })}
             </div>
-          ) : (
-            <p className="text-gray-500 text-sm">还没有选择任何赌注</p>
-          )}
-        </motion.div>
+          </motion.div>
+
+          {/* Custom stakes */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h3 className="font-bold text-gray-800 mb-3 text-[1.05rem]">自定义赌注</h3>
+
+            <div className="rounded-2xl border border-[#F3E7A5] bg-[#FFFDF0] p-3 mb-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="输入自定义赌注..."
+                  value={newStake}
+                  onChange={(e) => setNewStake(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      addCustomStake();
+                    }
+                  }}
+                  className="flex-1 rounded-xl border border-[#F6E59A] bg-white px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#FFEA6F]"
+                />
+                <button
+                  onClick={addCustomStake}
+                  className="w-10 h-10 rounded-xl border border-[#F3D95C] bg-[#FFEA6F] flex items-center justify-center text-[#1F2430] transition-colors"
+                >
+                  <Plus className="w-4.5 h-4.5" />
+                </button>
+              </div>
+            </div>
+
+            {customStakes.length > 0 && (
+              <div className="space-y-1.5">
+                {customStakes.map((stake, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="rounded-xl border border-[#F3D3E8] bg-[#FFF9FD] px-4 py-3 flex items-center justify-between"
+                  >
+                    <span className="text-sm text-gray-800">{stake}</span>
+                    <button
+                      onClick={() => removeCustomStake(stake)}
+                      className="text-[#B66FA0] font-medium text-sm"
+                    >
+                      删除
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Current selection summary */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="rounded-2xl border border-[#D3E7F7] bg-[#F6FBFE] p-4"
+          >
+            <h4 className="font-bold text-gray-800 mb-2 text-[1.02rem]">当前已选择</h4>
+            {selectedStakes.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedStakes.map((id) => {
+                  const stake = DEFAULT_STAKES.find((s) => s.id === id);
+                  if (!stake) return null;
+                  const IconComponent = stake.icon;
+                  const palette = STAKE_PALETTE.yellow;
+                  return (
+                    <div
+                      key={id}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${palette.chip}`}
+                    >
+                      <IconComponent className="w-3.5 h-3.5" />
+                      {stake.label}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">还没有选择任何赌注</p>
+            )}
+          </motion.div>
+        </div>
       </div>
     </div>
   );

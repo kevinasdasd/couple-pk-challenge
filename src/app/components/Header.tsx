@@ -15,7 +15,10 @@ export function Header({ title, showBack = false, showHistory = false, onBackCli
   const { enabled, available, toggle } = useBgm();
 
   return (
-    <div className="grid grid-cols-[5.5rem_1fr_5.5rem] items-center p-4 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+    <div
+      className="grid grid-cols-[4.75rem_1fr_4.75rem] items-center px-4 py-3 bg-white/80 backdrop-blur-sm sticky top-0 z-10"
+      style={{ minHeight: "var(--app-header-height)" }}
+    >
       <div className="flex justify-start">
         {showBack && (
           <button
@@ -27,7 +30,7 @@ export function Header({ title, showBack = false, showHistory = false, onBackCli
               }
               navigate(-1);
             }}
-            className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
@@ -40,7 +43,7 @@ export function Header({ title, showBack = false, showHistory = false, onBackCli
             playUiSound("confirm", enabled);
             toggle();
           }}
-          className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
           title={available ? (enabled ? "关闭音乐" : "开启音乐") : "BGM 文件暂不可用"}
           aria-label={available ? (enabled ? "关闭音乐" : "开启音乐") : "BGM 文件暂不可用"}
         >
@@ -56,7 +59,7 @@ export function Header({ title, showBack = false, showHistory = false, onBackCli
               playUiSound("navigate", enabled);
               navigate("/history");
             }}
-            className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
           >
             <HistoryIcon className="w-5 h-5 text-gray-700" />
           </button>
