@@ -4,7 +4,6 @@ import { Check, Plus, Coffee, Hand, Utensils, Crown, ShoppingCart, PackageCheck 
 import { Header } from "../components/Header";
 import { useBgm } from "../components/BgmProvider";
 import { playUiSound } from "../utils/soundEffects";
-import { DEFAULT_PLAYER_NAMES, setStoredPlayerName, getStoredPlayerNames } from "../utils/playerSettings";
 
 const STAKE_PALETTE = {
   yellow: {
@@ -29,8 +28,6 @@ export default function StakeSettings() {
   const [selectedStakes, setSelectedStakes] = useState<string[]>([]);
   const [customStakes, setCustomStakes] = useState<string[]>([]);
   const [newStake, setNewStake] = useState("");
-  const [maleName, setMaleName] = useState(DEFAULT_PLAYER_NAMES.Kevin);
-  const [femaleName, setFemaleName] = useState(DEFAULT_PLAYER_NAMES.Demi);
   const { enabled: audioEnabled } = useBgm();
 
   useEffect(() => {
@@ -45,23 +42,7 @@ export default function StakeSettings() {
     if (savedCustom) {
       setCustomStakes(JSON.parse(savedCustom));
     }
-
-    const storedNames = getStoredPlayerNames();
-    setMaleName(storedNames.Kevin);
-    setFemaleName(storedNames.Demi);
   }, []);
-
-  const commitPlayerName = (player: "Kevin" | "Demi", value: string) => {
-    const fallback = DEFAULT_PLAYER_NAMES[player];
-    const nextName = value.trim().slice(0, 20) || fallback;
-    setStoredPlayerName(player, nextName);
-
-    if (player === "Kevin") {
-      setMaleName(nextName);
-      return;
-    }
-    setFemaleName(nextName);
-  };
 
   const toggleStake = (id: string) => {
     playUiSound(selectedStakes.includes(id) ? "back" : "confirm", audioEnabled);
@@ -98,52 +79,6 @@ export default function StakeSettings() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.02 }}
-          >
-            <h3 className="font-bold text-gray-800 mb-3 text-[1.05rem]">对局名字</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="rounded-2xl border border-[#ABD7FA] bg-[#F6FBFE] p-3">
-                <span className="block text-xs font-medium text-[#5B88AB] mb-1.5">男生名字</span>
-                <input
-                  type="text"
-                  value={maleName}
-                  maxLength={20}
-                  placeholder={DEFAULT_PLAYER_NAMES.Kevin}
-                  onChange={(e) => setMaleName(e.target.value)}
-                  onBlur={() => commitPlayerName("Kevin", maleName)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      commitPlayerName("Kevin", maleName);
-                    }
-                  }}
-                  className="w-full bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-[#ABD7FA]"
-                />
-              </label>
-
-              <label className="rounded-2xl border border-[#FFC9EF] bg-[#FFF9FD] p-3">
-                <span className="block text-xs font-medium text-[#BE7BA7] mb-1.5">女生名字</span>
-                <input
-                  type="text"
-                  value={femaleName}
-                  maxLength={20}
-                  placeholder={DEFAULT_PLAYER_NAMES.Demi}
-                  onChange={(e) => setFemaleName(e.target.value)}
-                  onBlur={() => commitPlayerName("Demi", femaleName)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      commitPlayerName("Demi", femaleName);
-                    }
-                  }}
-                  className="w-full bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-[#FFC9EF]"
-                />
-              </label>
-            </div>
-          </motion.div>
-
-          {/* Preset stakes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
           >
             <h3 className="font-bold text-gray-800 mb-3 text-[1.05rem]">常用赌注</h3>
             <div className="grid grid-cols-3 auto-rows-fr gap-2">

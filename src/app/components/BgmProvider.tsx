@@ -1,12 +1,19 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getAudioVolume } from "../utils/soundEffects";
+import { getStoredAudioSettings, saveStoredAudioSettings } from "../utils/audioSettings";
 
 interface BgmContextValue {
   enabled: boolean;
   available: boolean;
   track: string;
+  masterVolume: number;
+  bgmVolume: number;
+  effectsVolume: number;
   toggle: () => void;
   setTrack: (track: string) => void;
+  setMasterVolume: (value: number) => void;
+  setBgmVolume: (value: number) => void;
+  setEffectsVolume: (value: number) => void;
   pauseForEffect: () => void;
   resumeAfterEffect: () => void;
 }
@@ -22,15 +29,16 @@ export function BgmProvider({ children }: { children: ReactNode }) {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [track, setTrack] = useState(DEFAULT_BGM_SOURCE);
   const [suspendCount, setSuspendCount] = useState(0);
+  const [audioSettings, setAudioSettings] = useState(() => getStoredAudioSettings());
 
   const attemptPlayback = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || !enabled || !available || suspendCount > 0) return;
-    audio.volume = getAudioVolume(track, "bgm");
+    audio.volume = getAudioVolume(track, "bgm", 1, audioSettings);
     void audio.play().catch(() => {
       // Mobile browsers may still block playback until a gesture.
     });
-  }, [available, enabled, suspendCount, track]);
+  }, [audioSettings, available, enabled, suspendCount, track]);
 
   useEffect(() => {
     const markInteracted = () => {
@@ -52,7 +60,7 @@ export function BgmProvider({ children }: { children: ReactNode }) {
     if (!audio) return;
 
     audio.loop = true;
-    audio.volume = getAudioVolume(track, "bgm");
+    audio.volume = getAudioVolume(track, "bgm", 1, audioSettings);
     if (audio.src !== new URL(track, window.location.origin).href) {
       audio.src = track;
       audio.load();
@@ -68,7 +76,7 @@ export function BgmProvider({ children }: { children: ReactNode }) {
     }
 
     attemptPlayback();
-  }, [attemptPlayback, enabled, hasInteracted, available, track, suspendCount]);
+  }, [attemptPlayback, enabled, hasInteracted, available, track, suspendCount, audioSettings]);
 
   const toggle = () => {
     setHasInteracted(true);
@@ -84,6 +92,18 @@ export function BgmProvider({ children }: { children: ReactNode }) {
     setTrack(nextTrack || DEFAULT_BGM_SOURCE);
   }, []);
 
+  const handleSetMasterVolume = useCallback((value: number) => {
+    setAudioSettings(saveStoredAudioSettings({ masterVolume: value }));
+  }, []);
+
+  const handleSetBgmVolume = useCallback((value: number) => {
+    setAudioSettings(saveStoredAudioSettings({ bgmVolume: value }));
+  }, []);
+
+  const handleSetEffectsVolume = useCallback((value: number) => {
+    setAudioSettings(saveStoredAudioSettings({ effectsVolume: value }));
+  }, []);
+
   const pauseForEffect = useCallback(() => {
     setSuspendCount((current) => current + 1);
   }, []);
@@ -97,12 +117,31 @@ export function BgmProvider({ children }: { children: ReactNode }) {
       enabled,
       available,
       track,
+      masterVolume: audioSettings.masterVolume,
+      bgmVolume: audioSettings.bgmVolume,
+      effectsVolume: audioSettings.effectsVolume,
       toggle,
       setTrack: handleSetTrack,
+      setMasterVolume: handleSetMasterVolume,
+      setBgmVolume: handleSetBgmVolume,
+      setEffectsVolume: handleSetEffectsVolume,
       pauseForEffect,
       resumeAfterEffect,
     }),
-    [enabled, available, track, handleSetTrack, pauseForEffect, resumeAfterEffect]
+    [
+      enabled,
+      available,
+      track,
+      audioSettings.masterVolume,
+      audioSettings.bgmVolume,
+      audioSettings.effectsVolume,
+      handleSetTrack,
+      handleSetMasterVolume,
+      handleSetBgmVolume,
+      handleSetEffectsVolume,
+      pauseForEffect,
+      resumeAfterEffect,
+    ]
   );
 
   return (

@@ -1,3 +1,5 @@
+import { getStoredAudioSettings } from "./audioSettings";
+
 type Player = "Kevin" | "Demi";
 type UiSoundKind = "confirm" | "back" | "navigate";
 type AudioCategory = "bgm" | "ui" | "stone" | "skill" | "voice" | "impact" | "victory" | "system";
@@ -98,9 +100,18 @@ function pickRandom<T>(items: T[]): T | null {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-export function getAudioVolume(src: string, category: AudioCategory, multiplier = 1) {
+export function getAudioVolume(
+  src: string,
+  category: AudioCategory,
+  multiplier = 1,
+  audioSettings = getStoredAudioSettings()
+) {
   const baseVolume = AUDIO_SOURCE_OVERRIDES[src] ?? AUDIO_CATEGORY_LEVELS[category];
-  return Math.max(0, Math.min(1, baseVolume * multiplier));
+  const channelMultiplier =
+    category === "bgm" ? audioSettings.bgmVolume / 100 : audioSettings.effectsVolume / 100;
+  const masterMultiplier = audioSettings.masterVolume / 100;
+
+  return Math.max(0, Math.min(1, baseVolume * masterMultiplier * channelMultiplier * multiplier));
 }
 
 export function playAudioEffect(

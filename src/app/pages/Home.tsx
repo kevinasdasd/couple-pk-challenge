@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { useNavigate } from "react-router";
-import { Dices, Smile, ListChecks, Trophy, Grid3x3, Volume2, VolumeX } from "lucide-react";
+import { Dices, Smile, ListChecks, SlidersHorizontal, Grid3x3 } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { useBgm } from "../components/BgmProvider";
 import { playUiSound } from "../utils/soundEffects";
@@ -20,28 +20,12 @@ const HOME_COLORS = {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { enabled, available, toggle } = useBgm();
+  const { enabled } = useBgm();
 
   return (
     <div className="app-mobile-page app-screen-gradient">
       {/* Header */}
       <div className="flex justify-end gap-2 px-4 pt-3 pb-1">
-        <button
-          onClick={() => {
-            playUiSound("confirm", enabled);
-            toggle();
-          }}
-          className="p-2.5 rounded-full transition-colors border"
-          style={{
-            backgroundColor: HOME_COLORS.paleYellow,
-            borderColor: HOME_COLORS.yellow,
-            color: HOME_COLORS.ink,
-          }}
-          title={available ? (enabled ? "关闭音乐" : "开启音乐") : "BGM 文件暂不可用"}
-          aria-label={available ? (enabled ? "关闭音乐" : "开启音乐") : "BGM 文件暂不可用"}
-        >
-          {enabled && available ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-        </button>
         <button
           onClick={() => {
             playUiSound("navigate", enabled);
@@ -54,7 +38,7 @@ export default function Home() {
             borderColor: "#F5DA57",
           }}
         >
-          <Trophy className="w-5 h-5" />
+          <SlidersHorizontal className="w-5 h-5" />
         </button>
       </div>
 

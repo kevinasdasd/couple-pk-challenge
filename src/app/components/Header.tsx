@@ -1,4 +1,5 @@
-import { ArrowLeft, History as HistoryIcon, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Settings2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useBgm } from "./BgmProvider";
 import { playUiSound } from "../utils/soundEffects";
@@ -8,11 +9,18 @@ interface HeaderProps {
   showBack?: boolean;
   showHistory?: boolean;
   onBackClick?: () => void;
+  rightActions?: ReactNode;
 }
 
-export function Header({ title, showBack = false, showHistory = false, onBackClick }: HeaderProps) {
+export function Header({
+  title,
+  showBack = false,
+  showHistory = false,
+  onBackClick,
+  rightActions,
+}: HeaderProps) {
   const navigate = useNavigate();
-  const { enabled, available, toggle } = useBgm();
+  const { enabled } = useBgm();
 
   return (
     <div
@@ -38,21 +46,7 @@ export function Header({ title, showBack = false, showHistory = false, onBackCli
       </div>
       {title && <h1 className="font-bold text-lg text-gray-800 text-center truncate px-2">{title}</h1>}
       <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={() => {
-            playUiSound("confirm", enabled);
-            toggle();
-          }}
-          className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-          title={available ? (enabled ? "关闭音乐" : "开启音乐") : "BGM 文件暂不可用"}
-          aria-label={available ? (enabled ? "关闭音乐" : "开启音乐") : "BGM 文件暂不可用"}
-        >
-          {enabled && available ? (
-            <Volume2 className="w-5 h-5 text-gray-700" />
-          ) : (
-            <VolumeX className="w-5 h-5 text-gray-700" />
-          )}
-        </button>
+        {rightActions}
         {showHistory && (
           <button
             onClick={() => {
@@ -61,7 +55,7 @@ export function Header({ title, showBack = false, showHistory = false, onBackCli
             }}
             className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
           >
-            <HistoryIcon className="w-5 h-5 text-gray-700" />
+            <Settings2 className="w-5 h-5 text-gray-700" />
           </button>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { RotateCcw, Home, Zap, Bug, Dices } from "lucide-react";
+import { RotateCcw, Zap, Bug, Dices } from "lucide-react";
 import { Header } from "../components/Header";
 import { ResultModal } from "../components/ResultModal";
 import { SkillModal } from "../components/SkillModal";
@@ -66,7 +66,7 @@ type PendingAction = "reset" | "home" | "back" | null;
 type OpeningStage = "duel" | "board";
 type DuelStatus = "rolling" | "tie" | "winner";
 
-const BOARD_SIZE = 15;
+const boardSize = 15;
 const PALETTE = {
   yellow: "#FFEA6F",
   paleYellow: "#FFFDF0",
@@ -89,13 +89,14 @@ const STAKE_LABELS: Record<string, string> = {
   receive: "收外卖",
   eat: "吃外卖",
 };
-const CENTER = Math.floor(BOARD_SIZE / 2);
+const CENTER = Math.floor(boardSize / 2);
+const BOARD_LAST_INDEX = boardSize - 1;
 const HOSHI_OFFSET = 3;
 const GO_FIVE_POINTS: Coordinate[] = [
   [HOSHI_OFFSET, HOSHI_OFFSET],
-  [HOSHI_OFFSET, BOARD_SIZE - 1 - HOSHI_OFFSET],
-  [BOARD_SIZE - 1 - HOSHI_OFFSET, HOSHI_OFFSET],
-  [BOARD_SIZE - 1 - HOSHI_OFFSET, BOARD_SIZE - 1 - HOSHI_OFFSET],
+  [HOSHI_OFFSET, BOARD_LAST_INDEX - HOSHI_OFFSET],
+  [BOARD_LAST_INDEX - HOSHI_OFFSET, HOSHI_OFFSET],
+  [BOARD_LAST_INDEX - HOSHI_OFFSET, BOARD_LAST_INDEX - HOSHI_OFFSET],
   [CENTER, CENTER],
 ];
 const DIRECTIONS: Coordinate[] = [
@@ -219,17 +220,24 @@ const PLAYER_TIER_WEIGHTS: Record<Player, Array<{ tier: SkillTier; weight: numbe
   ],
 };
 
+const BOARD_LINE_WIDTH = 1.5;
+const STONE_SCALE = 0.9;
+const PENDING_MARK_SCALE = 0.82;
+const BLOCKED_MARK_SCALE = 0.8;
+const HIGHLIGHT_MARK_SCALE = 0.86;
+const STAR_POINT_SCALE = 0.16;
+
 const createEmptyBoard = (): Board =>
-  Array(BOARD_SIZE)
+  Array(boardSize)
     .fill(null)
-    .map(() => Array(BOARD_SIZE).fill(null));
+    .map(() => Array(boardSize).fill(null));
 
 const cloneBoard = (board: Board): Board => board.map((row) => [...row]);
 
 const getOpponent = (player: Player): Player => (player === "Kevin" ? "Demi" : "Kevin");
 
 const isInsideBoard = (row: number, col: number) =>
-  row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE;
+  row >= 0 && row < boardSize && col >= 0 && col < boardSize;
 
 const pickOne = <T,>(items: T[]): T | null => {
   if (!items.length) return null;
@@ -261,8 +269,8 @@ const getCells = (
   predicate: (cell: Cell, row: number, col: number) => boolean
 ): Coordinate[] => {
   const cells: Coordinate[] = [];
-  for (let row = 0; row < BOARD_SIZE; row++) {
-    for (let col = 0; col < BOARD_SIZE; col++) {
+  for (let row = 0; row < boardSize; row++) {
+    for (let col = 0; col < boardSize; col++) {
       if (predicate(board[row][col], row, col)) {
         cells.push([row, col]);
       }
@@ -306,8 +314,8 @@ const getLineFromMove = (board: Board, row: number, col: number, player: Player)
 };
 
 const findLineForPlayer = (board: Board, player: Player): Coordinate[] | null => {
-  for (let row = 0; row < BOARD_SIZE; row++) {
-    for (let col = 0; col < BOARD_SIZE; col++) {
+  for (let row = 0; row < boardSize; row++) {
+    for (let col = 0; col < boardSize; col++) {
       if (board[row][col] !== player) continue;
 
       for (const [dx, dy] of DIRECTIONS) {
@@ -381,6 +389,26 @@ const HIGHLIGHT_CLASS_MAP: Record<HighlightKind, string> = {
   converted: "border-2 border-[#FFC9EF] bg-[#FFF9FD]",
   zone: "border-2 border-[#FFEA6F] bg-[#FFF3B4]/60",
   area: "border border-purple-500 bg-purple-200/15",
+};
+
+const STONE_HALO_KINDS: HighlightKind[] = ["added", "to", "converted"];
+
+const STONE_HALO_STYLE_MAP: Record<
+  Extract<HighlightKind, "added" | "to" | "converted">,
+  { borderColor: string; glow: string }
+> = {
+  added: {
+    borderColor: "#C9F100",
+    glow: "0 0 0 3px rgba(201, 241, 0, 0.28), 0 0 18px rgba(201, 241, 0, 0.32)",
+  },
+  to: {
+    borderColor: "#ABD7FA",
+    glow: "0 0 0 3px rgba(171, 215, 250, 0.3), 0 0 18px rgba(171, 215, 250, 0.34)",
+  },
+  converted: {
+    borderColor: "#FFC9EF",
+    glow: "0 0 0 3px rgba(255, 201, 239, 0.3), 0 0 18px rgba(255, 201, 239, 0.34)",
+  },
 };
 
 const rollDie = () => Math.floor(Math.random() * 6) + 1;
@@ -486,8 +514,8 @@ const applySkill = (
       break;
     }
     case "lockZone": {
-      const top = Math.floor(Math.random() * (BOARD_SIZE - 1));
-      const left = Math.floor(Math.random() * (BOARD_SIZE - 1));
+      const top = Math.floor(Math.random() * (boardSize - 1));
+      const left = Math.floor(Math.random() * (boardSize - 1));
       newBlockedZone = { top, left, untilMove: moveCount + 2 };
       markCells(
         [
@@ -784,7 +812,7 @@ export default function GobangGame() {
       setDestinyFillCount(0);
       setShowDestinyModal(false);
 
-      const totalCells = BOARD_SIZE * BOARD_SIZE;
+      const totalCells = boardSize * boardSize;
       destinyFillIntervalRef.current = window.setInterval(() => {
         setDestinyFillCount((prev) => {
           const next = prev + 9;
@@ -793,7 +821,7 @@ export default function GobangGame() {
               window.clearInterval(destinyFillIntervalRef.current);
               destinyFillIntervalRef.current = null;
             }
-            setBoard(Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(winnerPlayer)));
+            setBoard(Array.from({ length: boardSize }, () => Array(boardSize).fill(winnerPlayer)));
             destinyModalTimerRef.current = window.setTimeout(() => {
               setShowDestinyModal(true);
             }, 120);
@@ -1058,7 +1086,25 @@ export default function GobangGame() {
 
   return (
     <div className="app-mobile-page app-screen-gradient">
-      <Header title="胜天半子" showBack showHistory onBackClick={() => setPendingAction("back")} />
+      <Header
+        title="胜天半子"
+        showBack
+        showHistory
+        onBackClick={() => setPendingAction("back")}
+        rightActions={
+          <button
+            onClick={() => {
+              playUiSound("confirm", audioEnabled);
+              setPendingAction("reset");
+            }}
+            className="p-2.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+            aria-label="重新开始"
+            title="重新开始"
+          >
+            <RotateCcw className="w-5 h-5 text-gray-700" />
+          </button>
+        }
+      />
 
       {openingStage === "duel" ? (
         <div className="app-page-content app-page-content--fit">
@@ -1293,14 +1339,20 @@ export default function GobangGame() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="-mx-1 sm:mx-0 rounded-2xl p-1.5 sm:p-2 border mt-3 mb-4"
+                className="-mx-3 sm:-mx-1 md:mx-0 mt-2.5 mb-4 rounded-[1.35rem] border p-[3px]"
                 style={{ backgroundColor: PALETTE.yellow, borderColor: "#F5DA57" }}
               >
-                <div className="rounded-xl p-1 sm:p-1.5" style={{ backgroundColor: PALETTE.paleYellow }}>
-                  <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}>
+                <div
+                  className="rounded-[1.05rem] border px-0.5 py-1 sm:px-1 sm:py-1.5"
+                  style={{ backgroundColor: PALETTE.paleYellow, borderColor: "rgba(245, 218, 87, 0.48)" }}
+                >
+                  <div
+                    className="grid gap-0"
+                    style={{ gridTemplateColumns: `repeat(${boardSize}, minmax(0, 1fr))` }}
+                  >
                     {board.map((row, rowIndex) =>
                       row.map((cell, colIndex) => {
-                        const cellIndex = rowIndex * BOARD_SIZE + colIndex;
+                        const cellIndex = rowIndex * boardSize + colIndex;
                         const showDestinyFill = destinyFillCount > 0 && cellIndex < destinyFillCount;
                         const displayCell: Cell = showDestinyFill ? destinyFillPlayer : cell;
                         const isWinningCell = winningLine.some(
@@ -1310,50 +1362,120 @@ export default function GobangGame() {
                         const isBlockedCell =
                           !displayCell && isCellBlocked(activeBlockedZones, moveCount, rowIndex, colIndex);
                         const isPendingCell = pendingMove?.[0] === rowIndex && pendingMove?.[1] === colIndex;
+                        const shouldShowStoneHalo =
+                          !!displayCell &&
+                          !!highlightKind &&
+                          STONE_HALO_KINDS.includes(highlightKind);
+                        const isTengen = rowIndex === CENTER && colIndex === CENTER;
+                        const isFirstRow = rowIndex === 0;
+                        const isLastRow = rowIndex === BOARD_LAST_INDEX;
+                        const isFirstCol = colIndex === 0;
+                        const isLastCol = colIndex === BOARD_LAST_INDEX;
 
                         return (
                           <motion.button
                             key={`${rowIndex}-${colIndex}`}
-                            whileTap={{ scale: 0.9 }}
+                            whileTap={winner || !!displayCell || isBlockedCell ? undefined : { scale: 0.92 }}
                             onClick={() => handleCellClick(rowIndex, colIndex)}
                             disabled={!!winner || !!displayCell || isBlockedCell}
-                            className={`aspect-square relative border border-amber-300/50 transition-colors ${
+                            aria-label={`第 ${rowIndex + 1} 行第 ${colIndex + 1} 列`}
+                            className={`relative aspect-square transition-transform ${
                               isBlockedCell
                                 ? "bg-red-200/40 cursor-not-allowed"
                                 : ""
                             }`}
                             style={{
-                              borderColor: PALETTE.line,
-                              backgroundColor: isBlockedCell ? undefined : "transparent",
                               minWidth: 0,
                             }}
                           >
+                            <span
+                              className="pointer-events-none absolute top-1/2 -translate-y-1/2"
+                              style={{
+                                left: isFirstCol ? "50%" : 0,
+                                right: isLastCol ? "50%" : 0,
+                                height: `${BOARD_LINE_WIDTH}px`,
+                                backgroundColor: PALETTE.line,
+                              }}
+                            />
+                            <span
+                              className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+                              style={{
+                                top: isFirstRow ? "50%" : 0,
+                                bottom: isLastRow ? "50%" : 0,
+                                width: `${BOARD_LINE_WIDTH}px`,
+                                backgroundColor: PALETTE.line,
+                              }}
+                            />
+                            {isTengen && !displayCell && !isPendingCell && !highlightKind && !isBlockedCell && (
+                              <span
+                                className="pointer-events-none absolute left-1/2 top-1/2 z-[1] rounded-full -translate-x-1/2 -translate-y-1/2"
+                                style={{
+                                  width: `${STAR_POINT_SCALE * 100}%`,
+                                  height: `${STAR_POINT_SCALE * 100}%`,
+                                  backgroundColor: "#8F6A25",
+                                }}
+                              />
+                            )}
                             {isPendingCell && !displayCell && (
                               <motion.div
                                 initial={{ opacity: 0.5, scale: 0.9 }}
                                 animate={{ opacity: [0.45, 1, 0.45], scale: [0.9, 1, 0.9] }}
                                 transition={{ duration: 0.95, repeat: Infinity }}
-                                className="absolute inset-0.5 rounded-sm border-2 z-20"
-                                style={{ borderColor: PALETTE.yellow, backgroundColor: "rgba(255,234,111,0.28)" }}
+                                className="absolute left-1/2 top-1/2 z-20 rounded-full border-2 -translate-x-1/2 -translate-y-1/2"
+                                style={{
+                                  width: `${PENDING_MARK_SCALE * 100}%`,
+                                  height: `${PENDING_MARK_SCALE * 100}%`,
+                                  borderColor: PALETTE.yellow,
+                                  backgroundColor: "rgba(255,234,111,0.24)",
+                                }}
                               />
                             )}
                             {isBlockedCell && (
-                              <div className="absolute inset-0.5 rounded-sm border border-red-400/70 bg-red-300/20" />
+                              <div
+                                className="absolute left-1/2 top-1/2 z-10 rounded-full border -translate-x-1/2 -translate-y-1/2"
+                                style={{
+                                  width: `${BLOCKED_MARK_SCALE * 100}%`,
+                                  height: `${BLOCKED_MARK_SCALE * 100}%`,
+                                  borderColor: "rgba(248, 113, 113, 0.75)",
+                                  backgroundColor: "rgba(252, 165, 165, 0.22)",
+                                }}
+                              />
                             )}
                             {highlightKind && (
-                              <motion.div
-                                initial={{ opacity: 0.3, scale: 0.9 }}
-                                animate={{ opacity: [0.5, 1, 0.5], scale: [0.92, 1, 0.92] }}
-                                transition={{ duration: 1.05, repeat: Infinity }}
-                                className={`absolute inset-0.5 rounded-sm pointer-events-none z-20 ${HIGHLIGHT_CLASS_MAP[highlightKind]}`}
-                              />
+                              shouldShowStoneHalo ? (
+                                <motion.div
+                                  initial={{ opacity: 0.4, scale: 0.92 }}
+                                  animate={{ opacity: [0.6, 1, 0.6], scale: [0.94, 1.04, 0.94] }}
+                                  transition={{ duration: 0.95, repeat: Infinity }}
+                                  className="absolute left-1/2 top-1/2 pointer-events-none z-40 rounded-full -translate-x-1/2 -translate-y-1/2 border-[3px]"
+                                  style={{
+                                    width: "106%",
+                                    height: "106%",
+                                    borderColor: STONE_HALO_STYLE_MAP[highlightKind as "added" | "to" | "converted"].borderColor,
+                                    boxShadow: STONE_HALO_STYLE_MAP[highlightKind as "added" | "to" | "converted"].glow,
+                                    backgroundColor: "transparent",
+                                  }}
+                                />
+                              ) : (
+                                <motion.div
+                                  initial={{ opacity: 0.3, scale: 0.9 }}
+                                  animate={{ opacity: [0.5, 1, 0.5], scale: [0.92, 1, 0.92] }}
+                                  transition={{ duration: 1.05, repeat: Infinity }}
+                                  className={`absolute left-1/2 top-1/2 pointer-events-none z-20 rounded-full -translate-x-1/2 -translate-y-1/2 ${HIGHLIGHT_CLASS_MAP[highlightKind]}`}
+                                  style={{
+                                    width: `${HIGHLIGHT_MARK_SCALE * 100}%`,
+                                    height: `${HIGHLIGHT_MARK_SCALE * 100}%`,
+                                  }}
+                                />
+                              )
                             )}
                             <AnimatePresence>
                               {displayCell && (
                                 <motion.div
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}
-                                  className="absolute inset-0.5 flex items-center justify-center"
+                                  className="absolute left-1/2 top-1/2 z-30 flex items-center justify-center -translate-x-1/2 -translate-y-1/2"
+                                  style={{ width: `${STONE_SCALE * 100}%`, height: `${STONE_SCALE * 100}%` }}
                                 >
                                   <div
                                     className={`w-full h-full rounded-full ${isWinningCell ? "border-2" : "border"}`}
@@ -1374,32 +1496,6 @@ export default function GobangGame() {
                   </div>
                 </div>
               </motion.div>
-            </div>
-
-            {/* 操作按钮 */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  playUiSound("confirm", audioEnabled);
-                  setPendingAction("reset");
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full active:scale-95 transition-all font-medium border text-sm"
-                style={{ backgroundColor: PALETTE.paleYellow, borderColor: PALETTE.yellow, color: PALETTE.ink }}
-              >
-                <RotateCcw className="w-4.5 h-4.5" />
-                重新开始
-              </button>
-              <button
-                onClick={() => {
-                  playUiSound("back", audioEnabled);
-                  setPendingAction("home");
-                }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full active:scale-95 transition-all font-medium border text-sm"
-                style={{ backgroundColor: PALETTE.pink, borderColor: "#F5B6E1", color: PALETTE.ink }}
-              >
-                <Home className="w-4.5 h-4.5" />
-                返回主页
-              </button>
             </div>
           </div>
 

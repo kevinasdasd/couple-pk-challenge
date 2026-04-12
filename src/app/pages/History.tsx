@@ -1,275 +1,409 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Trophy, Flame, Calendar, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { ChevronDown, Mars, Music4, Sparkles, UserRound, Users, Venus, Volume2 } from "lucide-react";
 import { Header } from "../components/Header";
-import { Button } from "../components/Button";
 import { useBgm } from "../components/BgmProvider";
 import { playUiSound } from "../utils/soundEffects";
+import { DEFAULT_PLAYER_NAMES, getStoredPlayerNames, setStoredPlayerName, type PlayerId } from "../utils/playerSettings";
+import {
+  DEFAULT_ONLINE_PLAYER_SETTINGS,
+  getStoredOnlinePlayerSettings,
+  saveStoredOnlinePlayerSettings,
+  type OnlinePlayerSettings,
+  type OnlineRole,
+} from "../utils/onlineSettings";
 
-interface GameRecord {
-  date: string;
-  game: string;
-  loser: string;
-  stake: string;
-}
-
-const HISTORY_PALETTE = {
-  yellow: {
-    card: "bg-[#FFFDF0] border-[#F3E7A5]",
-    badge: "bg-[#FFEA6F] border-[#F3D95C] text-[#1F2430]",
-    chip: "bg-[#FFF4B8] text-[#715A0E]",
-    accent: "text-[#B89511]",
-  },
-  pink: {
-    card: "bg-[#FFF9FD] border-[#F3D3E8]",
-    badge: "bg-[#FFC9EF] border-[#F2B8DF] text-[#1F2430]",
-    chip: "bg-[#FFE2F5] text-[#9A6287]",
-    accent: "text-[#BE7BA7]",
-  },
-  green: {
-    card: "bg-[#F9FEE5] border-[#DDECA8]",
-    badge: "bg-[#C9F100] border-[#B6DB00] text-[#1F2430]",
-    chip: "bg-[#EBF8B7] text-[#607B00]",
-    accent: "text-[#7FA100]",
-  },
-  blue: {
-    card: "bg-[#F6FBFE] border-[#D3E7F7]",
-    badge: "bg-[#ABD7FA] border-[#93C4EC] text-[#1F2430]",
-    chip: "bg-[#DCEFFE] text-[#5D88A9]",
-    accent: "text-[#6E99BC]",
-  },
+const SETTINGS_COLORS = {
+  yellow: "#FFEA6F",
+  pink: "#FFC9EF",
+  blue: "#ABD7FA",
+  paleYellow: "#FFFDF0",
+  palePink: "#FFF9FD",
+  paleBlue: "#F6FBFE",
+  ink: "#1F2430",
+  subInk: "#667085",
 } as const;
 
-const getRecordPalette = (gameName: string) => {
-  if (gameName.includes("骰")) return HISTORY_PALETTE.pink;
-  if (gameName.includes("鳄")) return HISTORY_PALETTE.green;
-  if (gameName.includes("胜天") || gameName.includes("棋")) return HISTORY_PALETTE.blue;
-  return HISTORY_PALETTE.yellow;
+const AVATAR_OPTIONS = [
+  { id: "avatar-1", emoji: "🦁", solid: "#FFEA6F", soft: "#FFF7C9" },
+  { id: "avatar-2", emoji: "🐼", solid: "#FFC9EF", soft: "#FFE6F7" },
+  { id: "avatar-3", emoji: "🐸", solid: "#ABD7FA", soft: "#E4F3FF" },
+  { id: "avatar-4", emoji: "🐻", solid: "#FFEA6F", soft: "#FFF4BA" },
+  { id: "avatar-5", emoji: "🐯", solid: "#FFC9EF", soft: "#FFE8F8" },
+  { id: "avatar-6", emoji: "🐰", solid: "#ABD7FA", soft: "#EAF5FF" },
+  { id: "avatar-7", emoji: "🦊", solid: "#FFEA6F", soft: "#FFF7CD" },
+  { id: "avatar-8", emoji: "🐨", solid: "#FFC9EF", soft: "#FFE4F6" },
+  { id: "avatar-9", emoji: "🐶", solid: "#ABD7FA", soft: "#E8F4FD" },
+] as const;
+
+const THEME_BY_PLAYER: Record<PlayerId, { card: string; border: string; input: string; accent: string; chip: string }> = {
+  Kevin: {
+    card: SETTINGS_COLORS.paleBlue,
+    border: "#D3E7F7",
+    input: "#EAF5FF",
+    accent: "#5B88AB",
+    chip: SETTINGS_COLORS.blue,
+  },
+  Demi: {
+    card: SETTINGS_COLORS.palePink,
+    border: "#F3D3E8",
+    input: "#FFF1FA",
+    accent: "#BE7BA7",
+    chip: SETTINGS_COLORS.pink,
+  },
 };
 
+function SectionTitle({
+  icon,
+  title,
+  subtitle,
+  tint,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle?: string;
+  tint: string;
+}) {
+  return (
+    <div className="mb-3 flex items-start gap-3">
+      <div
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+        style={{ backgroundColor: tint, borderColor: "rgba(255,255,255,0.85)", color: SETTINGS_COLORS.ink }}
+      >
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-base font-bold" style={{ color: SETTINGS_COLORS.ink }}>
+          {title}
+        </h3>
+        {subtitle && (
+          <p className="mt-0.5 text-[12px]" style={{ color: SETTINGS_COLORS.subInk }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MajorSectionTitle({ title }: { title: string }) {
+  return (
+    <div className="px-1">
+      <h2 className="text-[1.15rem] font-black tracking-[0.01em]" style={{ color: SETTINGS_COLORS.ink }}>
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function AudioSliderRow({
+  icon,
+  label,
+  value,
+  color,
+  onChange,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div style={{ color }}>{icon}</div>
+          <span className="text-base font-bold" style={{ color: SETTINGS_COLORS.ink }}>
+            {label}
+          </span>
+        </div>
+        <span className="text-[1.05rem] font-black" style={{ color }}>
+          {value}%
+        </span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="app-settings-slider"
+        style={
+          {
+            ["--slider-thumb" as string]: color,
+            ["--slider-shadow" as string]: `${color}44`,
+            ["--slider-track" as string]: `linear-gradient(90deg, ${color} 0%, ${color} ${value}%, #E5E7EB ${value}%, #E5E7EB 100%)`,
+          } as CSSProperties
+        }
+      />
+    </div>
+  );
+}
+
 export default function History() {
-  const [history, setHistory] = useState<GameRecord[]>([]);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const { enabled: audioEnabled } = useBgm();
+  const [maleName, setMaleName] = useState(DEFAULT_PLAYER_NAMES.Kevin);
+  const [femaleName, setFemaleName] = useState(DEFAULT_PLAYER_NAMES.Demi);
+  const [onlineSettings, setOnlineSettings] = useState<OnlinePlayerSettings>(DEFAULT_ONLINE_PLAYER_SETTINGS);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const { enabled, masterVolume, bgmVolume, effectsVolume, setMasterVolume, setBgmVolume, setEffectsVolume } =
+    useBgm();
 
   useEffect(() => {
-    const saved = localStorage.getItem("gameHistory");
-    if (saved) {
-      const data = JSON.parse(saved);
-      setHistory(data);
-    }
+    const storedNames = getStoredPlayerNames();
+    setMaleName(storedNames.Kevin);
+    setFemaleName(storedNames.Demi);
+    setOnlineSettings(getStoredOnlinePlayerSettings());
   }, []);
 
-  const clearHistory = () => {
-    localStorage.removeItem("gameHistory");
-    setHistory([]);
-    setShowClearConfirm(false);
+  const myPlayerId: PlayerId = onlineSettings.role === "male" ? "Kevin" : "Demi";
+  const opponentPlayerId: PlayerId = myPlayerId === "Kevin" ? "Demi" : "Kevin";
+  const myTheme = THEME_BY_PLAYER[myPlayerId];
+  const opponentTheme = THEME_BY_PLAYER[opponentPlayerId];
+
+  const selectedAvatar = useMemo(
+    () => AVATAR_OPTIONS.find((avatar) => avatar.id === onlineSettings.avatarId) ?? AVATAR_OPTIONS[0],
+    [onlineSettings.avatarId]
+  );
+
+  const myNickname = myPlayerId === "Kevin" ? maleName : femaleName;
+  const opponentNickname = opponentPlayerId === "Kevin" ? maleName : femaleName;
+
+  const commitPlayerName = (player: PlayerId, value: string) => {
+    const fallback = DEFAULT_PLAYER_NAMES[player];
+    const nextName = value.trim().slice(0, 20) || fallback;
+    setStoredPlayerName(player, nextName);
+
+    if (player === "Kevin") {
+      setMaleName(nextName);
+      return;
+    }
+    setFemaleName(nextName);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) return "今天";
-    if (days === 1) return "昨天";
-    if (days < 7) return `${days}天前`;
-    return date.toLocaleDateString("zh-CN");
+  const updateOnlineSettings = (patch: Partial<OnlinePlayerSettings>) => {
+    setOnlineSettings((current) => saveStoredOnlinePlayerSettings({ ...current, ...patch }));
   };
 
-  // Calculate loser stats
-  const loserCounts: { [key: string]: number } = {};
-  history.forEach((record) => {
-    loserCounts[record.loser] = (loserCounts[record.loser] || 0) + 1;
-  });
-
-  const topLosers = Object.entries(loserCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  const currentMonthCount = history.filter((record) => {
-    const recordDate = new Date(record.date);
-    const now = new Date();
-    return recordDate.getMonth() === now.getMonth() && recordDate.getFullYear() === now.getFullYear();
-  }).length;
+  const selectRole = (role: OnlineRole) => {
+    playUiSound("confirm", enabled);
+    updateOnlineSettings({ role });
+  };
 
   return (
     <div className="app-mobile-page app-screen-gradient">
-      <Header title="战绩历史" showBack />
+      <Header title="游戏设置" showBack />
 
       <div className="app-page-content">
-        {/* Stats cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 gap-3 mb-5"
-        >
-          <div className="rounded-2xl border border-[#F3E7A5] bg-[#FFFDF0] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#F3D95C] bg-[#FFEA6F] text-[#1F2430]">
-                <Trophy className="h-4.5 w-4.5" />
-              </div>
-              <span className="text-sm font-medium text-[#6B7280]">总场次</span>
-            </div>
-            <p className="text-3xl font-bold text-[#1F2430]">{history.length}</p>
-          </div>
+        <div className="app-page-center app-page-content--fit app-page-stack app-page-stack--tight">
+          <MajorSectionTitle title="资料设置" />
 
-          <div className="rounded-2xl border border-[#D3E7F7] bg-[#F6FBFE] p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#93C4EC] bg-[#ABD7FA] text-[#1F2430]">
-                <Flame className="h-4.5 w-4.5" />
-              </div>
-              <span className="text-sm font-medium text-[#6B7280]">本月</span>
-            </div>
-            <p className="text-3xl font-bold text-[#1F2430]">{currentMonthCount}</p>
-          </div>
-        </motion.div>
-
-        {/* Top losers */}
-        {topLosers.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-5"
+            className="rounded-[1.55rem] border p-3.5"
+            style={{ backgroundColor: myTheme.card, borderColor: myTheme.border }}
           >
-            <h3 className="mb-3 font-bold text-gray-800">输得最多的人</h3>
-            <div className="space-y-3">
-              {topLosers.map(([name, count], index) => (
-                <div
-                  key={name}
-                  className={`flex items-center gap-4 rounded-2xl border p-4 ${
-                    index === 0
-                      ? HISTORY_PALETTE.yellow.card
-                      : index === 1
-                      ? HISTORY_PALETTE.pink.card
-                      : HISTORY_PALETTE.green.card
-                  }`}
-                >
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-full border font-bold ${
-                      index === 0
-                        ? HISTORY_PALETTE.yellow.badge
-                        : index === 1
-                        ? HISTORY_PALETTE.pink.badge
-                        : HISTORY_PALETTE.green.badge
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-800">{name}</p>
-                    <p className="text-sm text-gray-500">输了 {count} 次</p>
-                  </div>
-                  {index === 0 && <span className={`text-xl ${HISTORY_PALETTE.yellow.accent}`}>👑</span>}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
+            <SectionTitle
+              icon={<UserRound className="h-5 w-5" />}
+              title="我的资料"
+              subtitle="联机与个人标签都会使用这里的信息"
+              tint="#FFFFFF"
+            />
 
-        {/* History list */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-800">历史记录</h3>
-            {history.length > 0 && (
+            <div className="flex flex-col items-center">
               <button
                 onClick={() => {
-                  playUiSound("confirm", audioEnabled);
-                  setShowClearConfirm(true);
+                  playUiSound("confirm", enabled);
+                  setShowAvatarPicker((current) => !current);
                 }}
-                className="flex items-center gap-1 rounded-full border border-[#F2B8DF] bg-[#FFF9FD] px-3 py-1.5 text-sm font-medium text-[#B66FA0]"
+                className="relative flex h-24 w-24 items-center justify-center rounded-full border transition-transform active:scale-95"
+                style={{
+                  background: `linear-gradient(135deg, ${selectedAvatar.soft} 0%, ${selectedAvatar.solid} 100%)`,
+                  borderColor: selectedAvatar.solid,
+                }}
               >
-                <Trash2 className="w-4 h-4" />
-                清空
-              </button>
-            )}
-          </div>
-
-          {history.length === 0 ? (
-            <div className="rounded-2xl border border-[#D3E7F7] bg-[#F6FBFE] p-10 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-[#93C4EC] bg-[#ABD7FA] text-[#1F2430]">
-                <Calendar className="h-6 w-6" />
-              </div>
-              <p className="text-gray-600">还没有任何挑战记录</p>
-              <p className="mt-2 text-sm text-gray-400">快去玩几局吧！</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {history.map((record, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`rounded-2xl border p-4 ${getRecordPalette(record.game).card}`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-gray-800">{record.game}</span>
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${getRecordPalette(record.game).chip}`}>
-                          {record.stake}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        输家：<span className="font-medium text-gray-800">{record.loser}</span>
-                      </p>
-                    </div>
-                    <span className="text-xs text-gray-400">{formatDate(record.date)}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-      </div>
-
-      <AnimatePresence>
-        {showClearConfirm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 z-40"
-              onClick={() => {
-                playUiSound("back", audioEnabled);
-                setShowClearConfirm(false);
-              }}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 16 }}
-              className="fixed inset-x-6 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto"
-            >
-              <div className="rounded-[28px] bg-white border border-[#FFEA6F] p-6 text-center">
-                <p className="text-2xl font-bold text-[#1F2430] mb-3">确认清空吗？</p>
-                <p className="text-sm text-[#6B7280] mb-6">历史记录会一次性清空，之后就看不到啦。</p>
-                <div className="flex gap-3">
-                  <Button
-                    variant="secondary"
-                    sound="back"
-                    onClick={() => setShowClearConfirm(false)}
-                    className="flex-1"
-                  >
-                    取消
-                  </Button>
-                  <Button variant="primary" sound="confirm" onClick={clearHistory} className="flex-1">
-                    确认清空
-                  </Button>
+                <span className="text-[2.35rem]">{selectedAvatar.emoji}</span>
+                <div className="absolute -bottom-1.5 rounded-full border bg-white px-2 py-0.5 text-[10px] font-semibold text-[#5D6673]">
+                  我的头像
                 </div>
+              </button>
+
+              <div className="mt-4 grid w-full grid-cols-2 gap-2">
+                <button
+                  onClick={() => selectRole("male")}
+                  className="flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: onlineSettings.role === "male" ? SETTINGS_COLORS.blue : "#FFFFFF",
+                    borderColor: onlineSettings.role === "male" ? "#93C4EC" : "#E7EAF0",
+                    color: SETTINGS_COLORS.ink,
+                  }}
+                >
+                  <Mars className="h-4.5 w-4.5" />
+                  男生
+                </button>
+                <button
+                  onClick={() => selectRole("female")}
+                  className="flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all"
+                  style={{
+                    backgroundColor: onlineSettings.role === "female" ? SETTINGS_COLORS.pink : "#FFFFFF",
+                    borderColor: onlineSettings.role === "female" ? "#F2B8DF" : "#E7EAF0",
+                    color: SETTINGS_COLORS.ink,
+                  }}
+                >
+                  <Venus className="h-4.5 w-4.5" />
+                  女生
+                </button>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
+              <AnimatePresence initial={false}>
+                {showAvatarPicker && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -8 }}
+                    animate={{ opacity: 1, height: "auto", y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -8 }}
+                    className="w-full overflow-hidden"
+                  >
+                    <div className="mt-3 rounded-2xl border bg-white/75 p-3" style={{ borderColor: myTheme.border }}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-semibold" style={{ color: SETTINGS_COLORS.ink }}>
+                          选择我的头像
+                        </p>
+                        <ChevronDown className="h-4 w-4" style={{ color: SETTINGS_COLORS.subInk }} />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {AVATAR_OPTIONS.map((avatar) => {
+                          const isActive = avatar.id === onlineSettings.avatarId;
+                          return (
+                            <button
+                              key={avatar.id}
+                              onClick={() => {
+                                playUiSound("confirm", enabled);
+                                updateOnlineSettings({ avatarId: avatar.id });
+                                setShowAvatarPicker(false);
+                              }}
+                              className="flex aspect-square items-center justify-center rounded-xl border transition-transform active:scale-95"
+                              style={{
+                                background: `linear-gradient(135deg, ${avatar.soft} 0%, ${avatar.solid} 100%)`,
+                                borderColor: isActive ? SETTINGS_COLORS.ink : avatar.solid,
+                              }}
+                            >
+                              <span className="text-[1.55rem]">{avatar.emoji}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <label className="mt-3 w-full rounded-2xl border bg-white/88 p-3" style={{ borderColor: myTheme.border }}>
+                <span className="mb-1 block text-[11px] font-medium" style={{ color: myTheme.accent }}>
+                  我的昵称
+                </span>
+                <input
+                  type="text"
+                  value={myNickname}
+                  maxLength={20}
+                  placeholder={DEFAULT_PLAYER_NAMES[myPlayerId]}
+                  onChange={(event) => {
+                    if (myPlayerId === "Kevin") {
+                      setMaleName(event.target.value);
+                    } else {
+                      setFemaleName(event.target.value);
+                    }
+                  }}
+                  onBlur={() => commitPlayerName(myPlayerId, myNickname)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      commitPlayerName(myPlayerId, myNickname);
+                    }
+                  }}
+                  className="w-full rounded-xl px-3 py-2 text-sm font-medium outline-none"
+                  style={{ backgroundColor: myTheme.input, color: SETTINGS_COLORS.ink }}
+                />
+              </label>
+            </div>
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="rounded-[1.55rem] border p-3.5"
+            style={{ backgroundColor: opponentTheme.card, borderColor: opponentTheme.border }}
+          >
+            <SectionTitle
+              icon={<Users className="h-5 w-5" />}
+              title="线下双人"
+              subtitle="仅一台手机双人游玩时使用"
+              tint="#FFFFFF"
+            />
+
+            <label className="block rounded-2xl border bg-white/88 p-3" style={{ borderColor: opponentTheme.border }}>
+              <span className="mb-1 block text-[11px] font-medium" style={{ color: opponentTheme.accent }}>
+                对手昵称
+              </span>
+              <input
+                type="text"
+                value={opponentNickname}
+                maxLength={20}
+                placeholder={DEFAULT_PLAYER_NAMES[opponentPlayerId]}
+                onChange={(event) => {
+                  if (opponentPlayerId === "Kevin") {
+                    setMaleName(event.target.value);
+                  } else {
+                    setFemaleName(event.target.value);
+                  }
+                }}
+                onBlur={() => commitPlayerName(opponentPlayerId, opponentNickname)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    commitPlayerName(opponentPlayerId, opponentNickname);
+                  }
+                }}
+                className="w-full rounded-xl px-3 py-2 text-sm font-medium outline-none"
+                style={{ backgroundColor: opponentTheme.input, color: SETTINGS_COLORS.ink }}
+              />
+            </label>
+          </motion.section>
+
+          <MajorSectionTitle title="音效设置" />
+
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="rounded-[1.55rem] border bg-white p-4"
+            style={{ borderColor: "#E5ECF4" }}
+          >
+            <div className="space-y-5">
+              <AudioSliderRow
+                icon={<Volume2 className="h-5.5 w-5.5" />}
+                label="总音量"
+                value={masterVolume}
+                color={SETTINGS_COLORS.yellow}
+                onChange={setMasterVolume}
+              />
+              <AudioSliderRow
+                icon={<Music4 className="h-5.5 w-5.5" />}
+                label="背景音乐"
+                value={bgmVolume}
+                color={SETTINGS_COLORS.blue}
+                onChange={setBgmVolume}
+              />
+              <AudioSliderRow
+                icon={<Sparkles className="h-5.5 w-5.5" />}
+                label="动效音效"
+                value={effectsVolume}
+                color={SETTINGS_COLORS.pink}
+                onChange={setEffectsVolume}
+              />
+            </div>
+          </motion.section>
+        </div>
+      </div>
     </div>
   );
 }

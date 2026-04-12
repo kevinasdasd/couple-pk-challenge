@@ -229,6 +229,44 @@
     padding-bottom: calc(0.625rem + var(--app-safe-bottom));
   }
 
+  .app-settings-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 0.75rem;
+    border-radius: 999px;
+    background: var(--slider-track, #e5e7eb);
+    outline: none;
+  }
+
+  .app-settings-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--slider-thumb, #ffea6f);
+    border: 0;
+    box-shadow: 0 8px 16px var(--slider-shadow, rgba(255, 234, 111, 0.3));
+    cursor: pointer;
+  }
+
+  .app-settings-slider::-moz-range-thumb {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--slider-thumb, #ffea6f);
+    border: 0;
+    box-shadow: 0 8px 16px var(--slider-shadow, rgba(255, 234, 111, 0.3));
+    cursor: pointer;
+  }
+
+  .app-settings-slider::-moz-range-track {
+    height: 0.75rem;
+    border-radius: 999px;
+    background: var(--slider-track, #e5e7eb);
+  }
+
   /**
   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
