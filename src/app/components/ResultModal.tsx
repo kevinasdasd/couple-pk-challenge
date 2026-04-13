@@ -1,9 +1,17 @@
-import { useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, X } from "lucide-react";
 import { Button } from "./Button";
 import { useBgm } from "./BgmProvider";
 import { getAudioVolume, playUiSound } from "../utils/soundEffects";
+
+interface ResultModalAction {
+  label: string;
+  onClick: () => void;
+  variant?: "primary" | "secondary" | "danger";
+  disabled?: boolean;
+  sound?: "confirm" | "back" | "navigate" | "none";
+}
 
 interface ResultModalProps {
   isOpen: boolean;
@@ -12,9 +20,22 @@ interface ResultModalProps {
   loser: string;
   stake: string;
   message: string;
+  secondaryAction?: ResultModalAction;
+  primaryAction?: ResultModalAction;
+  footerNote?: ReactNode;
 }
 
-export function ResultModal({ isOpen, onClose, winner, loser, stake, message }: ResultModalProps) {
+export function ResultModal({
+  isOpen,
+  onClose,
+  winner,
+  loser,
+  stake,
+  message,
+  secondaryAction,
+  primaryAction,
+  footerNote,
+}: ResultModalProps) {
   const { enabled, pauseForEffect, resumeAfterEffect } = useBgm();
   const wasOpenRef = useRef(false);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -26,6 +47,27 @@ export function ResultModal({ isOpen, onClose, winner, loser, stake, message }: 
     ink: "#1F2430",
     subInk: "#6B7280",
   };
+  const isTie = winner === "平局" || loser === "重新来过";
+  const displayMessage = isTie
+    ? stake === "谁是大皇帝"
+      ? "这局打成平手，谁也还不是大皇帝。"
+      : "这局打成平手，本次不结算赌注。"
+    : message;
+  const resolvedSecondaryAction: ResultModalAction = secondaryAction ?? {
+    label: "再来一局",
+    onClick: onClose,
+    variant: "secondary",
+    sound: "confirm",
+  };
+  const resolvedPrimaryAction: ResultModalAction = primaryAction ?? {
+    label: "返回首页",
+    onClick: () => {
+      onClose();
+      window.history.back();
+    },
+    variant: "primary",
+    sound: "back",
+  };
 
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
@@ -33,8 +75,14 @@ export function ResultModal({ isOpen, onClose, winner, loser, stake, message }: 
         wasOpenRef.current = isOpen;
         return;
       }
+      if (victoryAudioRef.current) {
+        victoryAudioRef.current.pause();
+        victoryAudioRef.current.currentTime = 0;
+        victoryAudioRef.current = null;
+      }
       pauseForEffect();
       const victoryAudio = new Audio("/sounds/victory.mp3");
+      victoryAudio.preload = "auto";
       victoryAudio.volume = getAudioVolume("/sounds/victory.mp3", "victory");
       victoryAudioRef.current = victoryAudio;
       void victoryAudio.play().catch(() => {
@@ -120,7 +168,12 @@ export function ResultModal({ isOpen, onClose, winner, loser, stake, message }: 
                 <h2 className="text-2xl font-bold mb-2" style={{ color: palette.ink }}>挑战结束！</h2>
                 
                 <div className="rounded-2xl p-4 mb-4 border" style={{ backgroundColor: palette.paleYellow, borderColor: palette.yellow }}>
-                  {stake === "谁是大皇帝" ? (
+                  {isTie ? (
+                    <>
+                      <p className="text-lg font-bold mb-1" style={{ color: palette.ink }}>本次挑战结果</p>
+                      <p className="text-2xl font-bold" style={{ color: palette.ink }}>平局</p>
+                    </>
+                  ) : stake === "谁是大皇帝" ? (
                     <>
                       <p className="text-lg font-bold mb-1" style={{ color: palette.ink }}>本次{stake}</p>
                       <p className="text-2xl font-bold" style={{ color: palette.ink }}>由{winner}担任</p>
@@ -134,17 +187,35 @@ export function ResultModal({ isOpen, onClose, winner, loser, stake, message }: 
                   )}
                 </div>
 
-                <p className="mb-6" style={{ color: palette.subInk }}>{message}</p>
+                <p className="mb-6" style={{ color: palette.subInk }}>{displayMessage}</p>
+
+                {footerNote && (
+                  <div
+                    className="mb-4 rounded-2xl border px-4 py-3 text-left text-sm"
+                    style={{ backgroundColor: "#FFFFFF", borderColor: "#ECE7D4", color: palette.subInk }}
+                  >
+                    {footerNote}
+                  </div>
+                )}
 
                 <div className="flex gap-3">
-                  <Button variant="secondary" onClick={onClose} className="flex-1">
-                    再来一局
+                  <Button
+                    variant={resolvedSecondaryAction.variant ?? "secondary"}
+                    onClick={resolvedSecondaryAction.onClick}
+                    className="flex-1"
+                    disabled={resolvedSecondaryAction.disabled}
+                    sound={resolvedSecondaryAction.sound ?? "confirm"}
+                  >
+                    {resolvedSecondaryAction.label}
                   </Button>
-                  <Button variant="primary" onClick={() => {
-                    onClose();
-                    window.history.back();
-                  }} className="flex-1" sound="back">
-                    返回首页
+                  <Button
+                    variant={resolvedPrimaryAction.variant ?? "primary"}
+                    onClick={resolvedPrimaryAction.onClick}
+                    className="flex-1"
+                    disabled={resolvedPrimaryAction.disabled}
+                    sound={resolvedPrimaryAction.sound ?? "confirm"}
+                  >
+                    {resolvedPrimaryAction.label}
                   </Button>
                 </div>
               </div>

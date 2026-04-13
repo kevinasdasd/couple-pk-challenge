@@ -2,13 +2,15 @@ export type OnlineRole = "male" | "female";
 
 export interface OnlinePlayerSettings {
   role: OnlineRole;
-  avatarId: string;
+  maleAvatarId: string;
+  femaleAvatarId: string;
   nickname: string;
 }
 
 export const DEFAULT_ONLINE_PLAYER_SETTINGS: OnlinePlayerSettings = {
   role: "male",
-  avatarId: "avatar-1",
+  maleAvatarId: "avatar-1",
+  femaleAvatarId: "avatar-2",
   nickname: "",
 };
 
@@ -22,8 +24,8 @@ function normalizeRole(value: string | null | undefined): OnlineRole {
   return value === "female" ? "female" : "male";
 }
 
-function normalizeAvatarId(value: string | null | undefined) {
-  return typeof value === "string" && value.trim() ? value.trim() : DEFAULT_ONLINE_PLAYER_SETTINGS.avatarId;
+function normalizeAvatarId(value: string | null | undefined, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 export function getStoredOnlinePlayerSettings(): OnlinePlayerSettings {
@@ -38,7 +40,8 @@ export function getStoredOnlinePlayerSettings(): OnlinePlayerSettings {
 
     return {
       role: normalizeRole(parsed.role),
-      avatarId: normalizeAvatarId(parsed.avatarId),
+      maleAvatarId: normalizeAvatarId(parsed.maleAvatarId ?? parsed.avatarId, DEFAULT_ONLINE_PLAYER_SETTINGS.maleAvatarId),
+      femaleAvatarId: normalizeAvatarId(parsed.femaleAvatarId, DEFAULT_ONLINE_PLAYER_SETTINGS.femaleAvatarId),
       nickname: trimNickname(parsed.nickname),
     };
   } catch {
@@ -52,7 +55,8 @@ export function saveStoredOnlinePlayerSettings(settings: Partial<OnlinePlayerSet
       ...DEFAULT_ONLINE_PLAYER_SETTINGS,
       ...settings,
       role: normalizeRole(settings.role),
-      avatarId: normalizeAvatarId(settings.avatarId),
+      maleAvatarId: normalizeAvatarId(settings.maleAvatarId, DEFAULT_ONLINE_PLAYER_SETTINGS.maleAvatarId),
+      femaleAvatarId: normalizeAvatarId(settings.femaleAvatarId, DEFAULT_ONLINE_PLAYER_SETTINGS.femaleAvatarId),
       nickname: trimNickname(settings.nickname),
     };
   }
@@ -60,7 +64,11 @@ export function saveStoredOnlinePlayerSettings(settings: Partial<OnlinePlayerSet
   const current = getStoredOnlinePlayerSettings();
   const nextSettings: OnlinePlayerSettings = {
     role: normalizeRole(settings.role ?? current.role),
-    avatarId: normalizeAvatarId(settings.avatarId ?? current.avatarId),
+    maleAvatarId: normalizeAvatarId(settings.maleAvatarId ?? current.maleAvatarId, DEFAULT_ONLINE_PLAYER_SETTINGS.maleAvatarId),
+    femaleAvatarId: normalizeAvatarId(
+      settings.femaleAvatarId ?? current.femaleAvatarId,
+      DEFAULT_ONLINE_PLAYER_SETTINGS.femaleAvatarId
+    ),
     nickname: trimNickname(settings.nickname ?? current.nickname),
   };
 

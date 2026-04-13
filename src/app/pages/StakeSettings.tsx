@@ -35,7 +35,9 @@ export default function StakeSettings() {
     if (saved) {
       setSelectedStakes(JSON.parse(saved));
     } else {
-      setSelectedStakes(["coffee", "dinner"]);
+      const defaultSelected = ["emperor"];
+      setSelectedStakes(defaultSelected);
+      localStorage.setItem("selectedStakes", JSON.stringify(defaultSelected));
     }
 
     const savedCustom = localStorage.getItem("customStakes");
