@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { Clock3, Copy, Crown, Dices, Link2, LogIn, Plus, Users } from "lucide-react";
+import { AvatarBadge } from "../components/AvatarBadge";
 import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
@@ -1101,15 +1102,15 @@ export default function DiceGame() {
 
                 <div className="mt-3 rounded-2xl border bg-white/70 p-3" style={{ borderColor: "#F3D3E8" }}>
                   <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-2xl border"
-                      style={{
-                        background: `linear-gradient(135deg, ${selfAvatar.soft} 0%, ${selfAvatar.solid} 100%)`,
-                        borderColor: selfTheme.border,
-                      }}
-                    >
-                      <span className="text-[1.45rem]">{selfAvatar.emoji}</span>
-                    </div>
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl border"
+                    style={{
+                      background: `linear-gradient(135deg, ${selfAvatar.soft} 0%, ${selfAvatar.solid} 100%)`,
+                      borderColor: selfTheme.border,
+                    }}
+                  >
+                    <AvatarBadge avatar={selfAvatar} alt={`${selfNickname}头像`} emojiClassName="text-[1.45rem]" />
+                  </div>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: PALETTE.ink }}>{selfNickname}</p>
                       <p className="text-xs" style={{ color: PALETTE.subInk }}>{selfRoleLabel}</p>
@@ -1181,7 +1182,11 @@ export default function DiceGame() {
                           borderColor: ROLE_THEME[myLobbyPlayer?.role ?? selfRole].border,
                         }}
                       >
-                        <span className="text-[2.15rem]">{(myLobbyPlayer ? getAvatarOptionById(myLobbyPlayer.avatarId, myLobbyPlayer.role === "female" ? 1 : 0) : selfAvatar).emoji}</span>
+                        <AvatarBadge
+                          avatar={myLobbyPlayer ? getAvatarOptionById(myLobbyPlayer.avatarId, myLobbyPlayer.role === "female" ? 1 : 0) : selfAvatar}
+                          alt={`${myLobbyPlayer?.nickname ?? selfNickname}头像`}
+                          emojiClassName="text-[2.15rem]"
+                        />
                       </div>
                       <p className="mt-3 text-[1.1rem] font-black leading-none" style={{ color: PALETTE.ink }}>
                         {myLobbyPlayer?.nickname ?? selfNickname}
@@ -1229,7 +1234,11 @@ export default function DiceGame() {
                               borderColor: ROLE_THEME[rivalLobbyPlayer.role].border,
                             }}
                           >
-                            <span className="text-[2.15rem]">{getAvatarOptionById(rivalLobbyPlayer.avatarId, rivalLobbyPlayer.role === "female" ? 1 : 0).emoji}</span>
+                            <AvatarBadge
+                              avatar={getAvatarOptionById(rivalLobbyPlayer.avatarId, rivalLobbyPlayer.role === "female" ? 1 : 0)}
+                              alt={`${rivalLobbyPlayer.nickname}头像`}
+                              emojiClassName="text-[2.15rem]"
+                            />
                           </div>
                           <p className="mt-3 text-[1.1rem] font-black leading-none" style={{ color: PALETTE.ink }}>
                             {rivalLobbyPlayer.nickname}
@@ -1412,7 +1421,7 @@ export default function DiceGame() {
                       borderColor: hostTheme.border,
                     }}
                   >
-                    <span className="text-[1.35rem]">{hostAvatar.emoji}</span>
+                    <AvatarBadge avatar={hostAvatar} alt={`${hostLobbyPlayer?.nickname ?? "房主"}头像`} emojiClassName="text-[1.35rem]" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-black truncate" style={{ color: PALETTE.ink }}>{hostLobbyPlayer?.nickname ?? "房主"}</p>
@@ -1432,7 +1441,7 @@ export default function DiceGame() {
                       borderColor: guestTheme.border,
                     }}
                   >
-                    <span className="text-[1.35rem]">{guestAvatar.emoji}</span>
+                    <AvatarBadge avatar={guestAvatar} alt={`${guestLobbyPlayer?.nickname ?? "加入者"}头像`} emojiClassName="text-[1.35rem]" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-black truncate" style={{ color: PALETTE.ink }}>{guestLobbyPlayer?.nickname ?? "加入者"}</p>
@@ -1453,7 +1462,11 @@ export default function DiceGame() {
                     borderColor: myLobbyPlayerId === "host" ? hostTheme.border : guestTheme.border,
                   }}
                 >
-                  <span className="text-[1.35rem]">{myLobbyPlayerId === "host" ? hostAvatar.emoji : guestAvatar.emoji}</span>
+                  <AvatarBadge
+                    avatar={myLobbyPlayerId === "host" ? hostAvatar : guestAvatar}
+                    alt={`${myLobbyPlayer?.nickname ?? selfNickname}头像`}
+                    emojiClassName="text-[1.35rem]"
+                  />
                 </div>
                 <div>
                   <p className="font-bold text-[1.45rem] leading-none" style={{ color: PALETTE.ink }}>

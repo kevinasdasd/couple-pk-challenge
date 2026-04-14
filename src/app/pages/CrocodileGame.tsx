@@ -9,6 +9,7 @@ import {
   Plus,
   Users,
 } from "lucide-react";
+import { AvatarBadge } from "../components/AvatarBadge";
 import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
@@ -770,7 +771,7 @@ export default function CrocodileGame() {
                           borderColor: selfTheme.border,
                         }}
                       >
-                        <span className="text-[1.45rem]">{selfAvatar.emoji}</span>
+                        <AvatarBadge avatar={selfAvatar} alt={`${selfNickname}头像`} emojiClassName="text-[1.45rem]" />
                       </div>
                       <div>
                         <p className="text-sm font-semibold" style={{ color: PALETTE.ink }}>
@@ -832,7 +833,7 @@ export default function CrocodileGame() {
                             borderColor: myLobbyTheme.border,
                           }}
                         >
-                          <span className="text-[2.15rem]">{myLobbyAvatar.emoji}</span>
+                          <AvatarBadge avatar={myLobbyAvatar} alt={`${myLobbyPlayer?.nickname ?? selfNickname}头像`} emojiClassName="text-[2.15rem]" />
                         </div>
                         <p className="mt-3 text-[1.1rem] font-black leading-none" style={{ color: PALETTE.ink }}>
                           {myLobbyPlayer?.nickname ?? selfNickname}
@@ -880,7 +881,7 @@ export default function CrocodileGame() {
                                 borderColor: rivalLobbyTheme.border,
                               }}
                             >
-                              <span className="text-[2.15rem]">{rivalLobbyAvatar.emoji}</span>
+                              <AvatarBadge avatar={rivalLobbyAvatar} alt={`${rivalLobbyPlayer.nickname}头像`} emojiClassName="text-[2.15rem]" />
                             </div>
                             <p className="mt-3 text-[1.1rem] font-black leading-none" style={{ color: PALETTE.ink }}>
                               {rivalLobbyPlayer.nickname}

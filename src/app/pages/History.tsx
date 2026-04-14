@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Mars, Music4, Sparkles, UserRound, Users, Venus, Volume2 } from "lucide-react";
+import { AvatarBadge } from "../components/AvatarBadge";
 import { Header } from "../components/Header";
 import { useBgm } from "../components/BgmProvider";
 import { playUiSound } from "../utils/soundEffects";
@@ -258,7 +259,7 @@ export default function History() {
                       borderColor: myAvatar.solid,
                     }}
                   >
-                    <span className="text-[2rem]">{myAvatar.emoji}</span>
+                    <AvatarBadge avatar={myAvatar} alt="我的头像" emojiClassName="text-[2rem]" />
                   </button>
                   <span className="mt-1 text-[11px] font-semibold" style={{ color: myTheme.accent }}>
                     点击更换我的头像
@@ -320,7 +321,7 @@ export default function History() {
                                   borderColor: isActive ? SETTINGS_COLORS.ink : avatar.solid,
                                 }}
                               >
-                                <span className="text-[1.55rem]">{avatar.emoji}</span>
+                                <AvatarBadge avatar={avatar} alt="头像选项" emojiClassName="text-[1.55rem]" />
                               </button>
                             );
                           })}
@@ -398,7 +399,7 @@ export default function History() {
                       borderColor: taAvatar.solid,
                     }}
                   >
-                    <span className="text-[2rem]">{taAvatar.emoji}</span>
+                    <AvatarBadge avatar={taAvatar} alt="TA的头像" emojiClassName="text-[2rem]" />
                   </button>
                   <span className="mt-1 text-[11px] font-semibold" style={{ color: opponentTheme.accent }}>
                     点击更换TA的头像
@@ -435,7 +436,7 @@ export default function History() {
                                   borderColor: isActive ? SETTINGS_COLORS.ink : avatar.solid,
                                 }}
                               >
-                                <span className="text-[1.55rem]">{avatar.emoji}</span>
+                                <AvatarBadge avatar={avatar} alt="TA头像选项" emojiClassName="text-[1.55rem]" />
                               </button>
                             );
                           })}

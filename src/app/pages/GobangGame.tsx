@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { RotateCcw, Bug, Copy, Crown, Dices, Link2, LogIn, Plus, SmilePlus, Users } from "lucide-react";
+import { AvatarBadge } from "../components/AvatarBadge";
 import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { ResultModal } from "../components/ResultModal";
@@ -123,6 +124,16 @@ interface OnlineRematchAcceptPayload {
   accepterId: LobbyPlayerId;
 }
 
+interface OnlineRoomProbePayload {
+  requesterClientId: string;
+}
+
+interface OnlineRoomProbeAckPayload {
+  requesterClientId: string;
+  joinable: boolean;
+  reason?: "full" | "started";
+}
+
 interface GobangSnapshot {
   generatedBy: string;
   board: Board;
@@ -150,6 +161,7 @@ interface GobangSnapshot {
   duelRound: number;
   duelWinner: Player | null;
   duelDice: Record<Player, number>;
+  latestMove?: Coordinate | null;
 }
 
 interface GobangRoomSession {
@@ -838,6 +850,7 @@ export default function GobangGame() {
   const [roomCode, setRoomCode] = useState(searchRoomId);
   const [joinCode, setJoinCode] = useState(searchRoomId);
   const [joinError, setJoinError] = useState("");
+  const [isValidatingJoin, setIsValidatingJoin] = useState(false);
   const [copied, setCopied] = useState(false);
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([]);
   const [myLobbyPlayerId, setMyLobbyPlayerId] = useState<LobbyPlayerId>(restoredRoomSession?.playerId ?? "guest");
@@ -868,18 +881,18 @@ export default function GobangGame() {
   const [showEmojiSheet, setShowEmojiSheet] = useState(false);
   const [activeEmoji, setActiveEmoji] = useState<EmojiMessage | null>(null);
   const [emojiCooldownUntil, setEmojiCooldownUntil] = useState(0);
-  const [remoteMoveHighlight, setRemoteMoveHighlight] = useState<Coordinate | null>(null);
+  const [latestMoveHighlight, setLatestMoveHighlight] = useState<Coordinate | null>(null);
   const destinyFillIntervalRef = useRef<number | null>(null);
   const destinyModalTimerRef = useRef<number | null>(null);
   const areaHighlightTimerRef = useRef<number | null>(null);
   const boardNoticeTimerRef = useRef<number | null>(null);
   const emojiDisplayTimerRef = useRef<number | null>(null);
   const emojiCooldownTimerRef = useRef<number | null>(null);
-  const remoteMoveHighlightTimerRef = useRef<number | null>(null);
   const emojiChannelRef = useRef<RealtimeChannel | null>(null);
   const emojiClientIdRef = useRef(`emoji-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
   const roomChannelRef = useRef<RealtimeChannel | null>(null);
   const roomClientIdRef = useRef(`gobang-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
+  const roomProbeClientIdRef = useRef(`gobang-probe-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
   const joinValidationTimerRef = useRef<number | null>(null);
   const executeMoveRef = useRef<(row: number, col: number) => void>(() => undefined);
   const buildSnapshotRef = useRef<() => GobangSnapshot>(() => {
@@ -949,24 +962,8 @@ export default function GobangGame() {
     }
   };
 
-  const clearRemoteMoveHighlightTimer = () => {
-    if (remoteMoveHighlightTimerRef.current !== null) {
-      window.clearTimeout(remoteMoveHighlightTimerRef.current);
-      remoteMoveHighlightTimerRef.current = null;
-    }
-  };
-
   const clearRematchState = () => {
     setRematchRequesterId(null);
-  };
-
-  const showRemoteMoveHighlight = (row: number, col: number) => {
-    clearRemoteMoveHighlightTimer();
-    setRemoteMoveHighlight([row, col]);
-    remoteMoveHighlightTimerRef.current = window.setTimeout(() => {
-      setRemoteMoveHighlight(null);
-      remoteMoveHighlightTimerRef.current = null;
-    }, 2200);
   };
 
   const clearJoinValidationTimer = () => {
@@ -1180,6 +1177,10 @@ export default function GobangGame() {
       (stake: string) => typeof stake === "string" && stake.trim()
     );
 
+    if (allStakes.includes("谁是大皇帝")) {
+      return "谁是大皇帝";
+    }
+
     return allStakes[0] || "谁是大皇帝";
   };
 
@@ -1198,7 +1199,7 @@ export default function GobangGame() {
     clearDestinyTimers();
     clearAreaHighlightTimer();
     clearRematchState();
-    const selectedStake = getCurrentStake();
+    const selectedStake = roomId ? currentStake : getCurrentStake();
     setWinner(winnerPlayer);
     setWinningLine(line);
     setCurrentStake(selectedStake);
@@ -1261,9 +1262,7 @@ export default function GobangGame() {
     }
     clearAreaHighlightTimer();
     clearBoardNoticeTimer();
-    clearRemoteMoveHighlightTimer();
     setBoardNotice(null);
-    setRemoteMoveHighlight(null);
 
     const player = currentPlayer;
     const nextMoveCount = moveCount + 1;
@@ -1276,6 +1275,7 @@ export default function GobangGame() {
 
     let nextBoard = cloneBoard(board);
     nextBoard[row][col] = player;
+    setLatestMoveHighlight([row, col]);
     playStonePlaceSound(player, audioEnabled);
 
     let nextBoardEffects = boardEffects.filter((effect) => effect.blockedPlayer !== player);
@@ -1569,7 +1569,6 @@ export default function GobangGame() {
     clearBoardNoticeTimer();
     clearEmojiDisplayTimer();
     clearEmojiCooldownTimer();
-    clearRemoteMoveHighlightTimer();
     setBoard(createEmptyBoard());
     setCurrentPlayer("Kevin");
     setStartingPlayer("Kevin");
@@ -1584,7 +1583,7 @@ export default function GobangGame() {
     setShowEmojiSheet(false);
     setActiveEmoji(null);
     setEmojiCooldownUntil(0);
-    setRemoteMoveHighlight(null);
+    setLatestMoveHighlight(null);
     setPendingMove(null);
     setCurrentSkill(SKILL_DEFINITIONS.createStone);
     setSkillOwner("Kevin");
@@ -1631,7 +1630,6 @@ export default function GobangGame() {
 
   const clearRoomChannel = () => {
     clearJoinValidationTimer();
-    clearRemoteMoveHighlightTimer();
     if (roomChannelRef.current) {
       void supabase.removeChannel(roomChannelRef.current);
       roomChannelRef.current = null;
@@ -1703,6 +1701,7 @@ export default function GobangGame() {
     duelRound,
     duelWinner,
     duelDice,
+    latestMove: latestMoveHighlight,
   });
 
   const applySnapshot = (snapshot: GobangSnapshot) => {
@@ -1710,35 +1709,14 @@ export default function GobangGame() {
     clearDuelTimers();
     clearAreaHighlightTimer();
     clearBoardNoticeTimer();
-    clearRemoteMoveHighlightTimer();
-
     let incomingMoveOwner: Player | null = null;
-    let incomingMoveCell: Coordinate | null = null;
-
-    if (snapshot.generatedBy !== roomClientIdRef.current && snapshot.moveCount > moveCount) {
-      const changedCells: Array<{ row: number; col: number; before: Cell; after: Cell }> = [];
-      for (let rowIndex = 0; rowIndex < boardSize; rowIndex += 1) {
-        for (let colIndex = 0; colIndex < boardSize; colIndex += 1) {
-          if (board[rowIndex][colIndex] !== snapshot.board[rowIndex][colIndex]) {
-            changedCells.push({
-              row: rowIndex,
-              col: colIndex,
-              before: board[rowIndex][colIndex],
-              after: snapshot.board[rowIndex][colIndex],
-            });
-          }
-        }
-      }
-
-      const latestPlacedCell =
-        changedCells.find((cell) => cell.before === null && cell.after !== null) ??
-        changedCells.find((cell) => cell.after !== null) ??
-        null;
-
-      if (latestPlacedCell?.after) {
-        incomingMoveOwner = latestPlacedCell.after;
-        incomingMoveCell = [latestPlacedCell.row, latestPlacedCell.col];
-      }
+    const incomingLatestMove = snapshot.latestMove ?? null;
+    if (
+      snapshot.generatedBy !== roomClientIdRef.current &&
+      incomingLatestMove &&
+      snapshot.moveCount > moveCount
+    ) {
+      incomingMoveOwner = snapshot.board[incomingLatestMove[0]]?.[incomingLatestMove[1]] ?? null;
     }
 
     setBoard(snapshot.board);
@@ -1770,16 +1748,11 @@ export default function GobangGame() {
     setPendingAction(null);
     setShowEmojiSheet(false);
     setGameStarted(true);
+    setLatestMoveHighlight(incomingLatestMove);
     saveGobangSnapshot(roomId, snapshot);
 
     if (incomingMoveOwner) {
       playStonePlaceSound(incomingMoveOwner, audioEnabled);
-    }
-
-    if (incomingMoveCell && !snapshot.skillHighlights) {
-      showRemoteMoveHighlight(incomingMoveCell[0], incomingMoveCell[1]);
-    } else {
-      setRemoteMoveHighlight(null);
     }
   };
 
@@ -1791,7 +1764,7 @@ export default function GobangGame() {
       demiDie = rollDie();
     }
     return {
-      stake: getCurrentStake(),
+      stake: currentStake || getCurrentStake(),
       duelDice: {
         Kevin: kevinDie,
         Demi: demiDie,
@@ -1807,7 +1780,6 @@ export default function GobangGame() {
     clearBoardNoticeTimer();
     clearEmojiDisplayTimer();
     clearEmojiCooldownTimer();
-    clearRemoteMoveHighlightTimer();
     setBoard(createEmptyBoard());
     setCurrentPlayer(payload.startingPlayer);
     setStartingPlayer(payload.startingPlayer);
@@ -1822,7 +1794,7 @@ export default function GobangGame() {
     setShowEmojiSheet(false);
     setActiveEmoji(null);
     setEmojiCooldownUntil(0);
-    setRemoteMoveHighlight(null);
+    setLatestMoveHighlight(null);
     setPendingMove(null);
     setCurrentSkill(SKILL_DEFINITIONS.createStone);
     setSkillOwner(payload.startingPlayer);
@@ -1892,6 +1864,8 @@ export default function GobangGame() {
   const createRoom = () => {
     playUiSound("confirm", audioEnabled);
     const nextRoomCode = generateRoomCode();
+    const nextStake = getCurrentStake();
+    setIsValidatingJoin(false);
     setGameMode("create");
     setGameStarted(false);
     setRoomCode(nextRoomCode);
@@ -1900,6 +1874,7 @@ export default function GobangGame() {
     setCopied(false);
     setMyLobbyPlayerId("host");
     setLocalReady(false);
+    setCurrentStake(nextStake);
     setLobbyPlayers([
       {
         id: "host",
@@ -1916,6 +1891,7 @@ export default function GobangGame() {
 
   const joinRoom = () => {
     playUiSound("confirm", audioEnabled);
+    setIsValidatingJoin(false);
     setGameMode("join");
     setGameStarted(false);
     setRoomCode("");
@@ -1929,6 +1905,71 @@ export default function GobangGame() {
     clearRematchState();
   };
 
+  const validateJoinableRoom = async (
+    candidateRoomCode: string
+  ): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const requesterClientId = `${roomProbeClientIdRef.current}-${Date.now().toString(36)}`;
+
+    return new Promise((resolve) => {
+      let settled = false;
+      let timeoutId: number | null = null;
+      const probeChannel = supabase.channel(`gobang-room-${candidateRoomCode}`, {
+        config: {
+          broadcast: { self: false },
+        },
+      });
+
+      const finish = (result: { ok: true } | { ok: false; message: string }) => {
+        if (settled) return;
+        settled = true;
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        void supabase.removeChannel(probeChannel);
+        resolve(result);
+      };
+
+      probeChannel.on("broadcast", { event: "room_probe_ack" }, ({ payload }) => {
+        const response = payload as OnlineRoomProbeAckPayload;
+        if (!response || response.requesterClientId !== requesterClientId) {
+          return;
+        }
+
+        if (!response.joinable) {
+          if (response.reason === "full") {
+            finish({ ok: false, message: "这个房间已经满了。" });
+            return;
+          }
+          if (response.reason === "started") {
+            finish({ ok: false, message: "这局已经开始了，暂时不能加入。" });
+            return;
+          }
+        }
+
+        finish(response.joinable ? { ok: true } : { ok: false, message: "房间不存在，请检查房间号后重试。" });
+      });
+
+      probeChannel.subscribe((status) => {
+        if (status !== "SUBSCRIBED") {
+          return;
+        }
+
+        void probeChannel.send({
+          type: "broadcast",
+          event: "room_probe",
+          payload: {
+            requesterClientId,
+          } satisfies OnlineRoomProbePayload,
+        });
+
+        timeoutId = window.setTimeout(() => {
+          finish({ ok: false, message: "房间不存在，请检查房间号后重试。" });
+        }, 1800);
+      });
+    });
+  };
+
   const leaveOnlineSetup = () => {
     clearRoomChannel();
     clearGobangRoomSession(roomId);
@@ -1939,6 +1980,7 @@ export default function GobangGame() {
     setRoomCode("");
     setJoinCode("");
     setJoinError("");
+    setIsValidatingJoin(false);
     setCopied(false);
     setLobbyPlayers([]);
     setLocalReady(false);
@@ -1960,15 +2002,27 @@ export default function GobangGame() {
     }
   };
 
-  const saveJoinRoomCode = () => {
-    if (!/^\d{6}$/.test(joinCode.trim())) {
+  const saveJoinRoomCode = async () => {
+    const candidateRoomCode = joinCode.trim();
+    if (!/^\d{6}$/.test(candidateRoomCode)) {
       setJoinError("请输入 6 位数字房间号。");
       playUiSound("back", audioEnabled);
       return;
     }
-    playUiSound("confirm", audioEnabled);
+
+    setIsValidatingJoin(true);
     setJoinError("");
-    setRoomCode(joinCode.trim());
+    const validation = await validateJoinableRoom(candidateRoomCode);
+    setIsValidatingJoin(false);
+
+    if (!validation.ok) {
+      setJoinError(validation.message);
+      playUiSound("back", audioEnabled);
+      return;
+    }
+
+    playUiSound("confirm", audioEnabled);
+    setRoomCode(candidateRoomCode);
     setMyLobbyPlayerId("guest");
     setLocalReady(false);
     setLobbyPlayers([
@@ -2096,6 +2150,29 @@ export default function GobangGame() {
       clearRematchState();
       startOnlineOpeningReveal(payload as OnlineMatchStartPayload);
       setLobbyNotice("联机棋局开始了，按规则轮流落子。");
+    });
+
+    channel.on("broadcast", { event: "room_probe" }, ({ payload }) => {
+      const probe = payload as OnlineRoomProbePayload;
+      if (!probe?.requesterClientId || myLobbyPlayerId !== "host") {
+        return;
+      }
+
+      const presenceState = channel.presenceState<RoomPresencePayload>();
+      const hasGuestPresence = Object.values(presenceState)
+        .flat()
+        .some((presence) => presence.id === "guest");
+      const joinable = !hasGuestPresence && !gameStartedRef.current;
+
+      void channel.send({
+        type: "broadcast",
+        event: "room_probe_ack",
+        payload: {
+          requesterClientId: probe.requesterClientId,
+          joinable,
+          reason: joinable ? undefined : gameStartedRef.current ? "started" : "full",
+        } satisfies OnlineRoomProbeAckPayload,
+      });
     });
 
     channel.on("broadcast", { event: "rematch_request" }, ({ payload }) => {
@@ -2251,7 +2328,7 @@ export default function GobangGame() {
 
     clearJoinValidationTimer();
     joinValidationTimerRef.current = window.setTimeout(() => {
-      setJoinError("未找到这个房间号，请检查后重试。");
+      setJoinError("房主已离开房间，请重新输入房间号。");
       clearRoomChannel();
       setRoomCode("");
       setLobbyPlayers([]);
@@ -2302,6 +2379,7 @@ export default function GobangGame() {
     duelWinner,
     gameStarted,
     isOnlineMode,
+    latestMoveHighlight,
     moveCount,
     myLobbyPlayerId,
     openingStage,
@@ -2577,7 +2655,7 @@ export default function GobangGame() {
                         borderColor: myLobbyTheme.border,
                       }}
                     >
-                      <span className="text-[1.45rem]">{myLobbyAvatar.emoji}</span>
+                      <AvatarBadge avatar={myLobbyAvatar} alt={`${selfNickname}头像`} emojiClassName="text-[1.45rem]" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: PALETTE.ink }}>{selfNickname}</p>
@@ -2592,8 +2670,15 @@ export default function GobangGame() {
                   <Button variant="secondary" className="flex-1" onClick={leaveOnlineSetup} sound="back">
                     返回选择
                   </Button>
-                  <Button variant="primary" className="flex-1" onClick={saveJoinRoomCode} disabled={joinCode.trim().length !== 6}>
-                    加入房间
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => {
+                      void saveJoinRoomCode();
+                    }}
+                    disabled={joinCode.trim().length !== 6 || isValidatingJoin}
+                  >
+                    {isValidatingJoin ? "校验房间中..." : "加入房间"}
                   </Button>
                 </div>
               </motion.div>
@@ -2654,7 +2739,7 @@ export default function GobangGame() {
                           borderColor: PLAYER_THEME.Kevin.avatarBorder,
                         }}
                       >
-                        <span className="text-[2.15rem]">{hostAvatar.emoji}</span>
+                        <AvatarBadge avatar={hostAvatar} alt={`${hostName}头像`} emojiClassName="text-[2.15rem]" />
                       </div>
                       <p className="mt-3 text-[1.1rem] font-black leading-none" style={{ color: PALETTE.ink }}>
                         {hostName}
@@ -2699,7 +2784,7 @@ export default function GobangGame() {
                               borderColor: PLAYER_THEME.Demi.avatarBorder,
                             }}
                           >
-                            <span className="text-[2.15rem]">{guestAvatar.emoji}</span>
+                            <AvatarBadge avatar={guestAvatar} alt={`${guestName}头像`} emojiClassName="text-[2.15rem]" />
                           </div>
                           <p className="mt-3 text-[1.1rem] font-black leading-none" style={{ color: PALETTE.ink }}>
                             {guestName}
@@ -2845,17 +2930,14 @@ export default function GobangGame() {
           </motion.div>
         </div>
       ) : (
-          <div className="app-page-content">
-            <div
-              className="app-page-center flex flex-col"
-              style={{ minHeight: "calc(var(--app-content-safe-body-height) - 4.5rem)" }}
-            >
-              <div className="app-page-stack app-page-stack--tight">
+          <div className="app-page-content overflow-hidden !px-3 !pt-2.5 !pb-2">
+            <div className="app-page-center flex h-full min-h-0 flex-col gap-2">
+              <div className="app-page-stack app-page-stack--tight shrink-0">
                 <motion.div
                   key={`${statusPlayer}-${skillChargeOwner}-${winner ? "winner" : "turn"}`}
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative rounded-[1.55rem] border p-3.5"
+                  className="relative rounded-[2rem] border px-4 py-3.5"
                   style={{
                     backgroundColor: statusTheme.card,
                     borderColor: statusTheme.border,
@@ -2871,7 +2953,7 @@ export default function GobangGame() {
                         className="pointer-events-none absolute left-3 top-[3.05rem] z-20 origin-top-left"
                       >
                         <div
-                          className="flex max-w-[10.75rem] items-center gap-2 rounded-2xl border px-3 py-2 shadow-[0_14px_28px_rgba(0,0,0,0.08)]"
+                          className="flex max-w-[10.75rem] items-center gap-2 rounded-2xl border px-3 py-2"
                           style={{
                             backgroundColor: "#FFFFFFF4",
                             borderColor: activeEmojiTheme.border,
@@ -2884,7 +2966,7 @@ export default function GobangGame() {
                               borderColor: activeEmojiTheme.avatarBorder,
                             }}
                           >
-                            <span className="text-base">{activeEmojiAvatar.emoji}</span>
+                            <AvatarBadge avatar={activeEmojiAvatar} alt={`${activeEmoji.senderName}头像`} emojiClassName="text-base" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-[10px] font-semibold" style={{ color: activeEmojiTheme.accent }}>
@@ -2897,8 +2979,8 @@ export default function GobangGame() {
                     )}
                   </AnimatePresence>
 
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className="flex items-center justify-between gap-3.5">
+                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
                       <div
                         className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border"
                         style={{
@@ -2907,17 +2989,14 @@ export default function GobangGame() {
                           boxShadow: statusTheme.avatarGlow,
                         }}
                       >
-                        <span className="text-[1.9rem]">{statusAvatar.emoji}</span>
+                        <AvatarBadge avatar={statusAvatar} alt={`${displayPlayerNames[statusPlayer]}头像`} emojiClassName="text-[1.9rem]" />
                       </div>
 
                       <div className="min-w-0">
-                        <p
-                          className="mb-1 text-[11px] font-semibold tracking-[0.18em] uppercase"
-                          style={{ color: statusTheme.accent }}
-                        >
+                        <p className="mb-1 text-[0.92rem] font-bold leading-none" style={{ color: statusTheme.accent }}>
                           {winner ? "本局结果" : "当前回合"}
                         </p>
-                        <p className="text-[1.12rem] font-black leading-tight sm:text-[1.28rem]" style={{ color: PALETTE.ink }}>
+                        <p className="text-[1.28rem] font-black leading-tight sm:text-[1.6rem]" style={{ color: PALETTE.ink }}>
                           {winner ? (
                             <>
                               <span style={{ color: statusTheme.accent }}>{displayPlayerNames[statusPlayer]}</span>
@@ -2934,13 +3013,16 @@ export default function GobangGame() {
                     </div>
 
                     {!winner && (
-                      <div className="shrink-0 rounded-[1.2rem] border bg-white/72 px-2.5 py-2" style={{ borderColor: "rgba(255,255,255,0.92)" }}>
+                      <div
+                        className="shrink-0 rounded-[1.45rem] border bg-white/78 px-3 py-2.5"
+                        style={{ borderColor: "rgba(255,255,255,0.92)" }}
+                      >
                         <div className="flex items-center gap-2.5">
                           <div className="text-right">
-                            <p className="text-[10px] font-semibold tracking-[0.16em] uppercase" style={{ color: PALETTE.subInk }}>
+                            <p className="text-[0.92rem] font-bold leading-none" style={{ color: PALETTE.subInk }}>
                               技能
                             </p>
-                            <p className="mt-0.5 text-xs font-bold" style={{ color: skillChargeTheme.accent }}>
+                            <p className="mt-1 text-[0.92rem] font-bold leading-none" style={{ color: skillChargeTheme.accent }}>
                               {skillChargeTheme.label}
                             </p>
                           </div>
@@ -2995,16 +3077,18 @@ export default function GobangGame() {
               </div>
 
             {isDebugMode && (
-              <motion.div
+              <motion.details
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-2xl p-4 border mt-3"
+                className="mt-1 rounded-2xl border px-3 py-2"
                 style={{ backgroundColor: PALETTE.paleYellow, borderColor: PALETTE.yellow, color: PALETTE.ink }}
               >
-                <div className="flex items-center gap-2 mb-3">
-                  <Bug className="w-4 h-4" />
-                  <p className="text-sm font-semibold">Debug 测试面板（仅开发模式）</p>
-                </div>
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold">
+                  <Bug className="h-4 w-4" />
+                  Debug 测试面板（仅开发模式）
+                </summary>
+
+                <div className="mt-3">
 
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <button
@@ -3082,19 +3166,20 @@ export default function GobangGame() {
                     单测天命所归
                   </button>
                 </div>
-              </motion.div>
+                </div>
+              </motion.details>
             )}
 
-            <div className="flex-1 flex flex-col justify-center">
+            <div className="flex-1 min-h-0 flex flex-col justify-center">
               {/* 棋盘 */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="-mx-3 sm:-mx-1 md:mx-0 mt-2 mb-2 rounded-[1.35rem] border p-[3px]"
+                className="-mx-1 my-1 rounded-[1.25rem] border p-[2px]"
                 style={{ backgroundColor: PALETTE.yellow, borderColor: "#F5DA57" }}
               >
                 <div
-                  className="rounded-[1.05rem] border px-0.5 py-1 sm:px-1 sm:py-1.5"
+                  className="rounded-[1rem] border px-[2px] py-[3px]"
                   style={{ backgroundColor: PALETTE.paleYellow, borderColor: "rgba(245, 218, 87, 0.48)" }}
                 >
                   <div
@@ -3115,8 +3200,8 @@ export default function GobangGame() {
                           : false;
                         const isBlockedCell = !displayCell && isInLockZone;
                         const isPendingCell = pendingMove?.[0] === rowIndex && pendingMove?.[1] === colIndex;
-                        const isRemoteLatestCell =
-                          remoteMoveHighlight?.[0] === rowIndex && remoteMoveHighlight?.[1] === colIndex;
+                        const isLatestMoveCell =
+                          latestMoveHighlight?.[0] === rowIndex && latestMoveHighlight?.[1] === colIndex;
                         const shouldShowStoneHalo =
                           !!displayCell &&
                           !!highlightKind &&
@@ -3195,15 +3280,15 @@ export default function GobangGame() {
                                 }}
                               />
                             )}
-                            {isRemoteLatestCell && displayCell && !shouldShowStoneHalo && (
+                            {isLatestMoveCell && displayCell && (
                               <motion.div
                                 initial={{ opacity: 0.42, scale: 0.9 }}
                                 animate={{ opacity: [0.42, 0.95, 0.42], scale: [0.9, 1.04, 0.9] }}
                                 transition={{ duration: 0.95, repeat: Infinity }}
                                 className="absolute left-1/2 top-1/2 z-[18] rounded-full border-[3px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                                 style={{
-                                  width: "108%",
-                                  height: "108%",
+                                  width: shouldShowStoneHalo ? "114%" : "108%",
+                                  height: shouldShowStoneHalo ? "114%" : "108%",
                                   borderColor: displayCell === "Kevin" ? "rgba(121, 189, 245, 0.95)" : "rgba(216, 137, 232, 0.95)",
                                   boxShadow:
                                     displayCell === "Kevin"
@@ -3296,10 +3381,10 @@ export default function GobangGame() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-1.5 px-3 sm:px-4"
+            className="mt-0.5 shrink-0 px-1"
           >
             <div
-              className="rounded-2xl border p-2"
+              className="rounded-[1.2rem] border p-1.5"
               style={{
                 backgroundColor: pendingMove ? "#FFFFFFF2" : "#FFFFFFE8",
                 borderColor: pendingMove ? PALETTE.yellow : "#E8E6D8",
@@ -3309,11 +3394,11 @@ export default function GobangGame() {
                 {pendingMove ? `已选中 ${pendingMove[0] + 1} 行 ${pendingMove[1] + 1} 列` : "请选择落点"}
               </p>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={confirmPendingMove}
                   disabled={!pendingMove || !!winner}
-                  className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all border ${
+                  className={`flex-1 rounded-[1rem] py-2.5 text-sm font-semibold transition-all border ${
                     pendingMove && !winner
                       ? ""
                       : ""
@@ -3331,7 +3416,7 @@ export default function GobangGame() {
                     playUiSound(showEmojiSheet ? "back" : "confirm", audioEnabled);
                     setShowEmojiSheet((current) => !current);
                   }}
-                  className="rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all"
+                  className="rounded-[1rem] border px-3 py-2.5 text-sm font-semibold transition-all"
                   style={
                     showEmojiSheet
                       ? { backgroundColor: PALETTE.palePink, borderColor: PALETTE.pink, color: PALETTE.ink }

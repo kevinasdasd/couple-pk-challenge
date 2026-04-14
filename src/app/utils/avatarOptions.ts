@@ -3,12 +3,13 @@ export interface AvatarOption {
   emoji: string;
   solid: string;
   soft: string;
+  imageSrc?: string;
 }
 
 export const AVATAR_OPTIONS: AvatarOption[] = [
-  { id: "avatar-1", emoji: "🦁", solid: "#FFEA6F", soft: "#FFF7C9" },
-  { id: "avatar-2", emoji: "🐼", solid: "#FFC9EF", soft: "#FFE6F7" },
-  { id: "avatar-3", emoji: "🐸", solid: "#ABD7FA", soft: "#E4F3FF" },
+  { id: "avatar-1", emoji: "🦁", solid: "#FFEA6F", soft: "#FFF7C9", imageSrc: "/images/avatars/jiyibaobao.jpg" },
+  { id: "avatar-2", emoji: "🐼", solid: "#FFC9EF", soft: "#FFE6F7", imageSrc: "/images/avatars/wusaqi.jpg" },
+  { id: "avatar-3", emoji: "🐸", solid: "#ABD7FA", soft: "#E4F3FF", imageSrc: "/images/avatars/xiaobamao.jpg" },
   { id: "avatar-4", emoji: "🐻", solid: "#FFEA6F", soft: "#FFF4BA" },
   { id: "avatar-5", emoji: "🐯", solid: "#FFC9EF", soft: "#FFE8F8" },
   { id: "avatar-6", emoji: "🐰", solid: "#ABD7FA", soft: "#EAF5FF" },
